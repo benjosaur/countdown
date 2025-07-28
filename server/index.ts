@@ -11,7 +11,7 @@ export const handler = awsLambdaRequestHandler({
   responseMeta() {
     return {
       headers: {
-        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Origin": process.env.FRONTEND_URL,
         "Access-Control-Allow-Methods": "GET,POST",
         "Access-Control-Allow-Headers": "authorization",
       },

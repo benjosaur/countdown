@@ -31,5 +31,8 @@
     "client",
     "server",
     "shared"
-  ]
+  ],
+  "dependencies": {
+    "aws-cdk-lib": "^2.207.0"
+  }
 }
