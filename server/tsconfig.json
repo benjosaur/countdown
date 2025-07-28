@@ -21,8 +21,10 @@
 
     "noUnusedLocals": false,
     "noUnusedParameters": false,
-    "noPropertyAccessFromIndexSignature": false
+    "noPropertyAccessFromIndexSignature": false,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true
   },
-  "include": ["**/*"],
+  "include": ["**/*", "../shared/types"],
   "exclude": ["node_modules", "dist"]
 }

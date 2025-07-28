@@ -24,6 +24,11 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false
   },
-  "include": ["**/*", "../server/trpc/prod/router.ts"],
+  "include": [
+    "**/*",
+    "../server/trpc/prod/router.ts",
+    "types/global.d.ts",
+    "../server/tsconfig.build.json"
+  ],
   "exclude": ["node_modules", "dist"]
 }

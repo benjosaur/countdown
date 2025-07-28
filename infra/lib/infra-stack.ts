@@ -72,7 +72,7 @@ export class InfraStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       environment: {
-        FRONTEND_URL: distribution.distributionDomainName,
+        FRONTEND_URL: `https://${distribution.distributionDomainName}`,
       },
     });
     const api = new apigateway.RestApi(this, "TrpcApi", {

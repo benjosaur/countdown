@@ -16,7 +16,7 @@ export function FlashCard({
   console.log(letters);
   return (
     <div className="max-w-2xl mx-auto">
-      <div className="bg-white border-2 border-blue-200 p-6">
+      <div className="bg-white border-2 border-blue-200 p-3 sm:p-6">
         <div className="text-center">
           <div className="text-blue-900 text-sm font-semibold mb-6 uppercase tracking-wider">
             Letters
@@ -27,7 +27,7 @@ export function FlashCard({
             {letters.split("").map((letter, index) => (
               <div
                 key={`${letter}-${index}`}
-                className="w-12 h-12 md:w-16 md:h-16 bg-blue-600 text-white border-2 border-blue-700 flex items-center justify-center flex-shrink-0 text-2xl md:text-4xl font-bold font-mono"
+                className="w-[8vw] h-[8vw] sm:w-14 sm:h-14 md:w-16 md:h-16 bg-blue-600 text-white border-2 border-blue-700 flex items-center justify-center flex-shrink-0 text-xl sm:text-4xl md:text-5xl font-bold font-mono"
               >
                 {letter}
               </div>

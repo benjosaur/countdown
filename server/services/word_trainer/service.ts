@@ -1,5 +1,5 @@
 import type { LetterPool } from "./types";
-import wordsCSV from "../../const/useful_words.csv?raw";
+
 import {
   LETTER_DISTRIBUTION,
   VOWELS,

@@ -29,6 +29,6 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../shared/types", "../shared/types/global.d.ts"],
   "exclude": ["node_modules", "dist"]
 }
