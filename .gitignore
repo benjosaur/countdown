@@ -1,3 +1,7 @@
+# data
+*.csv
+**/useful_words.json
+
 # dependencies (bun install)
 node_modules
 
