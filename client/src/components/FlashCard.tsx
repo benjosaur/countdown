@@ -4,6 +4,7 @@ interface FlashCardProps {
   onGuessChange: (value: string) => void;
   guess: string;
   disabled: boolean;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
 }
 
 export function FlashCard({
@@ -12,6 +13,7 @@ export function FlashCard({
   onGuessChange,
   guess,
   disabled,
+  inputRef,
 }: FlashCardProps) {
   console.log(letters);
   return (
@@ -43,6 +45,7 @@ export function FlashCard({
               Your Guess
             </label>
             <input
+              ref={inputRef}
               id="guess-input"
               type="text"
               value={guess}
@@ -52,6 +55,7 @@ export function FlashCard({
               className="w-full p-3 text-center text-lg font-semibold bg-white border-2 border-blue-200 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 disabled:bg-gray-100 disabled:text-gray-500"
               autoComplete="off"
               spellCheck="false"
+              autoFocus
             />
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Trophy, Clock } from "lucide-react";
 import { FlashCard } from "./FlashCard";
@@ -49,6 +49,7 @@ export function WordTrainer() {
   const [guessTime, setGuessTime] = useState<number | null>(null);
   const [restartCountdown, setRestartCountdown] = useState<number | null>(null);
   const [isShorterWordGuessed, setIsShorterWordGuessed] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: newGame, refetch: getNewGame } = useQuery(
     trpc.wordTrainer.getNewGame.queryOptions(undefined, { enabled: false })
@@ -68,6 +69,11 @@ export function WordTrainer() {
         setStartTime(Date.now());
         setGuessTime(null);
         setRestartCountdown(null);
+        
+        // Focus input after state updates
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 0);
       }
     } catch (error) {
       console.error("Failed to load puzzle:", error);
@@ -179,6 +185,7 @@ export function WordTrainer() {
             onGuessChange={handleGuessChange}
             guess={guess}
             disabled={!isCountdownActive}
+            inputRef={inputRef}
           />
 
           {showWord && (
