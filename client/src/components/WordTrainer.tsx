@@ -5,41 +5,26 @@ import { FlashCard } from "./FlashCard";
 import { trpc } from "../utils/trpc";
 import type { WordPuzzle } from "shared";
 import { useQuery } from "@tanstack/react-query";
-
-interface ButtonProps {
-  children: React.ReactNode;
-  variant?: "primary" | "secondary";
-  onClick: () => void;
-  className?: string;
-}
-
-function Button({
-  children,
-  variant = "primary",
-  onClick,
-  className = "",
-}: ButtonProps) {
-  const baseClasses =
-    "px-6 py-2 font-semibold text-base transition-all duration-200 border focus:outline-none focus:ring-2";
-
-  const variantClasses = {
-    primary:
-      "bg-blue-600 text-white border-blue-600 hover:bg-blue-700 focus:ring-blue-300",
-    secondary:
-      "bg-white text-blue-600 border-blue-600 hover:bg-blue-50 focus:ring-blue-300",
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className={`${baseClasses} ${variantClasses[variant]} ${className}`}
-    >
-      {children}
-    </button>
-  );
-}
+import { cn } from "@/utils/cn";
 
 export function WordTrainer() {
+  // Input: Primary Words (Target + Anagrams). Secondary Words (Valid for scramble but < len(target)). Letters
+  // If formSubmit
+  // Submit to checker -> while loading should also freeze timer.
+  // First submission is checked via FE
+  // Is in primary words?
+  // If yes go to submission endpoint. Submit Data: 1. Word 2. As Primary or Secondary? 3. Record (Time or Fail)
+  // Is in correct words? (i.e. shorter but valid)
+  // If yes go to submission endpoint.
+  // Continue and set helper message that longer out there.
+  // Can be formed from letters?
+  // Then go to word checker endpoint.
+  //
+  //
+  //
+  // Else If 20s Timer Run out (w/ 1s freezes for every input onChange)
+  // Submission endpoint 1. Word 2. As Primary 3. Fail
+
   const [currentGame, setCurrentGame] = useState<WordPuzzle | null>(null);
   const [countdown, setCountdown] = useState(30);
   const [isCountdownActive, setIsCountdownActive] = useState(false);
@@ -60,6 +45,7 @@ export function WordTrainer() {
   const startNewRound = useCallback(async () => {
     try {
       const result = await getNewGame();
+      console.log(result.data);
       if (result.data) {
         setCurrentGame(result.data);
         setCountdown(30);
@@ -69,7 +55,7 @@ export function WordTrainer() {
         setStartTime(Date.now());
         setGuessTime(null);
         setRestartCountdown(null);
-        
+
         // Focus input after state updates
         setTimeout(() => {
           inputRef.current?.focus();
@@ -165,18 +151,21 @@ export function WordTrainer() {
         </div>
 
         <div className="max-w-2xl mx-auto">
-          <div className="text-center mb-8">
+          <div className="text-center mb-4">
             <h1 className="text-4xl font-bold text-blue-900 mb-2">
               Countdown Word Trainer
             </h1>
             <p className="text-blue-700">
               Find the hidden word in the scrambled letters below!
             </p>
-            {isShorterWordGuessed && (
-              <p className="text-green-600 mt-2">
-                Correct! But there's a longer word you can find!
-              </p>
-            )}
+            <p
+              className={cn(
+                "text-green-600 mt-1",
+                !isShorterWordGuessed && "invisible"
+              )}
+            >
+              Correct! But there's a longer word you can find!
+            </p>
           </div>
 
           <FlashCard

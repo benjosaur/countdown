@@ -47,7 +47,6 @@ export class WordService {
         ? 4
         : 5;
 
-    console.log(targetVowels, "target vowels");
     const randomIndex = Math.floor(Math.random() * 1000);
     const targetWord = this.words[randomIndex];
     if (!targetWord) {
