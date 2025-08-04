@@ -13,7 +13,7 @@ export function WordTrainer() {
   // Submit to checker -> while loading should also freeze timer.
   // First submission is checked via FE
   // Is in primary words?
-  // If yes go to submission endpoint. Submit Data: 1. Word 2. As Primary or Secondary? 3. Record (Time or Fail)
+  // If yes go to submission endpoint. Submit Data: 1. WordId/Rank 2. Submitted Word 3. As Primary or Secondary? 4. Record (Time or Fail)
   // Is in correct words? (i.e. shorter but valid)
   // If yes go to submission endpoint.
   // Continue and set helper message that longer out there.
@@ -23,7 +23,7 @@ export function WordTrainer() {
   //
   //
   // Else If 20s Timer Run out (w/ 1s freezes for every input onChange)
-  // Submission endpoint 1. Word 2. As Primary 3. Fail
+  // Submission endpoint 1. WordId/Rank 2. As Primary 3. Fail
 
   const [currentGame, setCurrentGame] = useState<WordPuzzle | null>(null);
   const [countdown, setCountdown] = useState(30);
