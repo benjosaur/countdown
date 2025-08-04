@@ -1,7 +1,7 @@
-import { WordService } from "./word_trainer/service.ts";
+import { WordPuzzleService } from "./word_puzzle/service.ts";
 
 export function createServices() {
   return {
-    wordService: new WordService(),
+    wordPuzzleService: new WordPuzzleService(),
   };
 }

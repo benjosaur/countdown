@@ -9,7 +9,7 @@ import {
   THREE_VOWEL_CHANCE,
   FOUR_VOWEL_CHANCE,
 } from "../../const/letters";
-import { WordRepository } from "./repository";
+import { WordPuzzleRepository } from "./repository";
 import type { WordPuzzle } from "shared";
 
 interface WordData {
@@ -19,18 +19,18 @@ interface WordData {
   length: number;
 }
 
-export class WordService {
-  private wordRepository = new WordRepository();
+export class WordPuzzleService {
+  private wordPuzzleRepository = new WordPuzzleRepository();
   private words: WordData[] = [];
 
   constructor() {
-    this.words = this.wordRepository.getWords();
+    this.words = this.wordPuzzleRepository.getWords();
     if (this.words.length === 0) {
       throw new Error("No words available in repository");
     }
   }
 
-  async generatePuzzle(): Promise<WordPuzzle> {
+  async generatePuzzle(wordIndex: number): Promise<WordPuzzle> {
     /*
     0. Decide if aim toward 3V, 4V, 5V based on distribution
     1. Select a random word from top 1000
@@ -47,8 +47,7 @@ export class WordService {
         ? 4
         : 5;
 
-    const randomIndex = Math.floor(Math.random() * 1000);
-    const targetWord = this.words[randomIndex];
+    const targetWord = this.words[wordIndex];
     if (!targetWord) {
       throw new Error("No words available");
     }

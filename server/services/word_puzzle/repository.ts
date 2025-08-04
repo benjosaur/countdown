@@ -9,13 +9,8 @@ interface CSVRow {
   [key: string]: string;
 }
 
-export class WordRepository {
+export class WordPuzzleRepository {
   getWords(): WordData[] {
-    const words = this.loadWordData();
-    return words;
-  }
-
-  private loadWordData(): WordData[] {
     const words: WordData[] = [];
 
     // Cast the imported JSON data

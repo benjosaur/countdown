@@ -10,6 +10,8 @@
     "start": "bun run index.js"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.859.0",
+    "@aws-sdk/lib-dynamodb": "^3.859.0",
     "@trpc/server": "^11.4.3",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
