@@ -1,5 +1,5 @@
 interface LikelihoodProps {
-  usefulness: number;
+  score: number;
   successUnder10?: number;
   successBetween10And20?: number;
   successIndirectly?: number;
@@ -7,7 +7,7 @@ interface LikelihoodProps {
 }
 
 export function generateLikelihood({
-  usefulness,
+  score,
   successUnder10 = 0,
   successBetween10And20 = 0,
   successIndirectly = 0,
@@ -20,5 +20,5 @@ export function generateLikelihood({
     0.25 * successIndirectly -
     fail;
   const historyMultiplier = 1 / Math.max(historyScore, 1);
-  return historyMultiplier * usefulness;
+  return historyMultiplier * score;
 }

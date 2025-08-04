@@ -2,7 +2,9 @@ import { router, publicProcedure } from "./trpc.ts";
 
 export const wordTrainerRouter = router({
   getNewGame: publicProcedure.query(async ({ ctx }) => {
-    const game = await ctx.services.wordService.generatePuzzle();
+    const game = await ctx.services.wordSessionService.generatePuzzle(
+      ctx.user.sub
+    );
     return game;
   }),
 

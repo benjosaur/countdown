@@ -23,8 +23,9 @@
     "noUnusedParameters": false,
     "noPropertyAccessFromIndexSignature": false,
     "resolveJsonModule": true,
+    "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   },
-  "include": ["**/*", "../shared/types"],
+  "include": ["**/*", "../shared/types", "const/**/*.json"],
   "exclude": ["node_modules", "dist"]
 }

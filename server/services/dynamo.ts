@@ -20,6 +20,8 @@ const createRawClient = (): DynamoDBClient => {
   });
 };
 
+export const TABLE_NAME = "Countdown";
+
 export const client = DynamoDBDocumentClient.from(createRawClient());
 
 export function dropNullFields<T>(input: T): T {

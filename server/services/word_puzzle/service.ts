@@ -11,22 +11,24 @@ import {
 } from "../../const/letters";
 import { WordPuzzleRepository } from "./repository";
 import type { WordPuzzle } from "shared";
+import type { WordData } from "./schema";
+import { is } from "zod/locales";
 
-interface WordData {
-  rank: number;
-  word: string;
-  anagrams: string[];
-  length: number;
-}
+let cachedWords: WordData[] | null = null; // store outside class to avoid reloading on every instance creation
 
 export class WordPuzzleService {
   private wordPuzzleRepository = new WordPuzzleRepository();
   private words: WordData[] = [];
 
   constructor() {
-    this.words = this.wordPuzzleRepository.getWords();
-    if (this.words.length === 0) {
-      throw new Error("No words available in repository");
+    if (cachedWords) {
+      this.words = cachedWords;
+    } else {
+      this.words = this.wordPuzzleRepository.getWords();
+      if (this.words.length === 0) {
+        throw new Error("No words available in repository");
+      }
+      cachedWords = this.words;
     }
   }
 
@@ -52,45 +54,53 @@ export class WordPuzzleService {
       throw new Error("No words available");
     }
 
+    // have checked length of anagrams > 0 in repository
     const filteredWordPool = this.removeImpossibleWordsFromPool(
-      targetWord.word
+      targetWord.anagrams[0]!
     );
 
-    const spacesLeftToFill = TOTAL_LETTERS - targetWord.word.length;
+    const spacesLeftToFill = TOTAL_LETTERS - targetWord.anagrams[0]!.length;
 
     const filteredLetterPool = this.removeLettersFromLetterPool(
-      targetWord.word
+      targetWord.anagrams[0]!
     );
 
-    const gameLetters = this.fillRemainingLetters(
-      filteredLetterPool,
-      filteredWordPool,
-      targetWord.word,
-      spacesLeftToFill,
-      targetVowels
-    );
+    const { letters: gameLetters, isExistsEqualOrBetterWord } =
+      this.fillRemainingLetters(
+        filteredLetterPool,
+        filteredWordPool,
+        targetWord.anagrams[0]!,
+        spacesLeftToFill,
+        targetVowels
+      );
 
-    const correctWords = [targetWord.word, ...targetWord.anagrams];
+    const correctWords = [...targetWord.anagrams];
 
     for (const word of filteredWordPool) {
-      if (word.word.length < 6) continue; // Skip words that are too short
-      if (targetWord.word == word.word) continue;
+      if (word.anagrams[0]!.length < 6) continue; // Skip words that are too short
+      if (targetWord.anagrams[0]! == word.anagrams[0]!) continue;
       if (word.length >= targetWord.length) continue;
-      if (!this.doLettersContainWordLetters(gameLetters.join(""), word.word)) {
+      if (
+        !this.doLettersContainWordLetters(
+          gameLetters.join(""),
+          word.anagrams[0]!
+        )
+      ) {
         continue; // Word cannot be formed with available letters
       } else {
-        const shorterValidWord = word.word;
+        const shorterValidWord = word.anagrams[0]!;
         correctWords.push(shorterValidWord, ...word.anagrams);
       }
     }
 
     const puzzle = {
       letters: this.scrambleLetters(gameLetters),
-      primaryWords: [targetWord.word, ...targetWord.anagrams],
+      primaryWords: targetWord.anagrams,
       correctWords: correctWords,
-      rank: targetWord.rank,
+      index: targetWord.index,
+      isExistsEqualOrBetterWord,
     };
-    console.log(puzzle);
+    // console.log(puzzle);
     return puzzle;
   }
 
@@ -98,7 +108,7 @@ export class WordPuzzleService {
     const newPool = { ...LETTER_DISTRIBUTION };
     for (const letter of word.toUpperCase()) {
       if (newPool[letter] == null) {
-        console.log(letter, "not in pool", newPool);
+        // console.log(letter, "not in pool", newPool);
         throw new Error(`Letter ${letter} not found in pool`);
       }
       newPool[letter]--;
@@ -112,7 +122,7 @@ export class WordPuzzleService {
     chosenWord: string,
     numberLeftToFill: number,
     targetVowels: number
-  ): string[] {
+  ): { letters: string[]; isExistsEqualOrBetterWord: boolean } {
     // sample candidate letters first then check constraints.
     for (let i = 0; i < MAX_RETRIES; i++) {
       // need a copy *here* to anchor conditional prob of below sample without replacement BUT if fail then need to reset letter pool.
@@ -123,42 +133,42 @@ export class WordPuzzleService {
           letters.join("")
         );
         if (currentVowelCount >= targetVowels) {
-          console.log(letters, "already enough vowels");
+          // console.log(letters, "already enough vowels");
           letters.push(
             this.sampleLetterFromPool({
               letterPool: letterPoolCopy,
               isVowel: false,
             })
           );
-          console.log(letters, "already enough vowels");
+          // console.log(letters, "already enough vowels");
         } else {
-          console.log(letters, "not enough vowels");
+          // console.log(letters, "not enough vowels");
           letters.push(
             this.sampleLetterFromPool({
               letterPool: letterPoolCopy,
               isVowel: true,
             })
           );
-          console.log(letters, "not enough vowels");
+          // console.log(letters, "not enough vowels");
         }
       }
       const { vowelCount, consonantCount } = this.countVowelsAndConsonants(
         letters.join("")
       );
       if (i === MAX_RETRIES - 1) {
-        console.log("Reached max retries, using unrestricted letters");
-        return letters;
+        // console.log("Reached max retries, using unrestricted letters");
+        return { letters, isExistsEqualOrBetterWord: true };
       }
       if (vowelCount < 3 || consonantCount < 4)
         throw new Error(
-          "Unexpected: vowel targeting should prevent this from failing"
+          "Unexpected: vowel targeting should have prevented this from failing"
         );
       // Retry if letters can form better or equal words.
       if (this.hasEqualOrLongerWords(letters.join(""), wordPool, chosenWord)) {
-        console.log("failed here");
+        // console.log("failed here");
         continue;
       }
-      return letters;
+      return { letters, isExistsEqualOrBetterWord: false };
     }
     throw new Error("Unexpected: loop should always return");
   }
@@ -197,7 +207,7 @@ export class WordPuzzleService {
   private sampleItemFromFrequencyMapWithoutReplacement(
     frequencyMap: Record<string, number>
   ): string {
-    console.log(frequencyMap);
+    // console.log(frequencyMap);
     const totalFrequency = Object.values(frequencyMap).reduce(
       (sum, freq) => sum + freq,
       0
@@ -216,7 +226,7 @@ export class WordPuzzleService {
         return item;
       }
     }
-    console.log(frequencyMap, cumulativeCount, randomIndex);
+    // console.log(frequencyMap, cumulativeCount, randomIndex);
     throw new Error("frequencyMap exhausted");
   }
 
@@ -253,7 +263,7 @@ export class WordPuzzleService {
     const validWords: WordData[] = [];
 
     for (const word of this.words) {
-      if (this.isDictWordPossible(chosenWord, word.word)) {
+      if (this.isDictWordPossible(chosenWord, word.anagrams[0]!)) {
         validWords.push(word);
       }
     }
@@ -267,11 +277,11 @@ export class WordPuzzleService {
     chosenWord: string
   ): boolean {
     for (const word of wordPool) {
-      if (word.word == chosenWord) continue;
-      if (word.word.length < chosenWord.length) continue;
+      if (word.anagrams[0]! == chosenWord) continue;
+      if (word.anagrams[0]!.length < chosenWord.length) continue;
       const isWordFormableByLetters = this.doLettersContainWordLetters(
         letters,
-        word.word
+        word.anagrams[0]!
       );
       if (!isWordFormableByLetters) continue;
       return true; // Found a possible word that is equal or longer

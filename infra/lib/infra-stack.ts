@@ -5,9 +5,15 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as cloudfront from "aws-cdk-lib/aws-cloudfront";
 import * as s3deploy from "aws-cdk-lib/aws-s3-deployment";
+import * as cognito from "aws-cdk-lib/aws-cognito";
+
+interface InfraStackProps extends cdk.StackProps {
+  googleClientId: string;
+  googleClientSecret: string;
+}
 
 export class InfraStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props: InfraStackProps) {
     super(scope, id, props);
 
     const s3CorsRule: s3.CorsRule = {
@@ -64,6 +70,103 @@ export class InfraStack extends cdk.Stack {
       }
     );
 
+    //user pool
+    const userPool = new cognito.UserPool(this, "CountdownUserPool", {
+      userPoolName: "countdown-user-pool",
+      selfSignUpEnabled: true,
+      signInCaseSensitive: false,
+      userInvitation: {
+        emailSubject: "Your Countdown account has been created",
+        emailBody:
+          "Hello {username}, Your Countdown account has been created. Your temporary password is: {####}. Please log in and change your password.",
+      },
+      standardAttributes: {
+        email: {
+          required: true,
+          mutable: true,
+        },
+        givenName: {
+          required: true,
+          mutable: true,
+        },
+        familyName: {
+          required: true,
+          mutable: true,
+        },
+      },
+      signInAliases: {
+        email: true,
+      },
+      autoVerify: {
+        email: true,
+      },
+      passwordPolicy: {
+        minLength: 8,
+        requireLowercase: true,
+        requireUppercase: true,
+        requireDigits: true,
+        requireSymbols: false,
+      },
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    const cognitoDomain = userPool.addDomain("CountdownCognitoDomain", {
+      cognitoDomain: {
+        domainPrefix: "countdown-auth",
+      },
+    });
+
+    const googleProvider = new cognito.UserPoolIdentityProviderGoogle(
+      this,
+      "GoogleProvider",
+      {
+        userPool,
+        clientId: props.googleClientId,
+        clientSecret: props.googleClientSecret,
+        scopes: ["email", "profile", "openid"],
+        attributeMapping: {
+          email: cognito.ProviderAttribute.GOOGLE_EMAIL,
+          givenName: cognito.ProviderAttribute.GOOGLE_GIVEN_NAME,
+          familyName: cognito.ProviderAttribute.GOOGLE_FAMILY_NAME,
+        },
+      }
+    );
+
+    const userPoolClient = new cognito.UserPoolClient(
+      this,
+      "CountdownUserPoolClient",
+      {
+        userPool,
+        userPoolClientName: "paddock-health-user-pool-client",
+        authFlows: {
+          userSrp: true,
+          userPassword: true,
+          custom: false,
+        },
+        generateSecret: false,
+        preventUserExistenceErrors: true,
+        supportedIdentityProviders: [
+          cognito.UserPoolClientIdentityProvider.COGNITO,
+          cognito.UserPoolClientIdentityProvider.GOOGLE,
+        ],
+        oAuth: {
+          callbackUrls: [`https://${distribution.distributionDomainName}`],
+          logoutUrls: [`https://${distribution.distributionDomainName}`],
+          flows: {
+            authorizationCodeGrant: true,
+          },
+          scopes: [
+            cognito.OAuthScope.EMAIL,
+            cognito.OAuthScope.OPENID,
+            cognito.OAuthScope.PROFILE,
+          ],
+        },
+      }
+    );
+
+    userPoolClient.node.addDependency(googleProvider);
+
     //backend
     const trpcLambda = new lambda.Function(this, "TrpcApiFunction", {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -108,6 +211,21 @@ export class InfraStack extends cdk.Stack {
       destinationBucket: s3Bucket,
       distribution,
       distributionPaths: ["/*"],
+    });
+
+    new cdk.CfnOutput(this, "UserPoolId", {
+      value: userPool.userPoolId,
+      description: "Cognito User Pool ID",
+    });
+
+    new cdk.CfnOutput(this, "UserPoolClientId", {
+      value: userPoolClient.userPoolClientId,
+      description: "Cognito User Pool Client ID",
+    });
+
+    new cdk.CfnOutput(this, "CognitoCloudFrontURL", {
+      value: cognitoDomain.cloudFrontEndpoint,
+      description: "Endpoint for Hosted Cognito UI",
     });
 
     new cdk.CfnOutput(this, "CloudFrontURL", {

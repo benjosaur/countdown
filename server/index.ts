@@ -3,6 +3,13 @@ import { prodAppRouter } from "./trpc/prod/router";
 import { createLambdaContext } from "./trpc/prod/context";
 import dotenv from "dotenv";
 
+export const TEST_USER: User = {
+  sub: process.env.DEV_SUB!,
+  email: process.env.DEV_EMAIL!,
+  firstName: process.env.DEV_FIRST_NAME!,
+  lastName: process.env.DEV_LAST_NAME!,
+};
+
 dotenv.config();
 
 export const handler = awsLambdaRequestHandler({

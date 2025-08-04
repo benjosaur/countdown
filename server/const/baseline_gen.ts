@@ -3,22 +3,21 @@ import { join } from "path";
 import { generateLikelihood } from "../utils/words";
 
 interface WordEntry {
-  rank: number;
-  word: string;
-  usefulness: number;
+  index: number;
+  words: string;
+  score: number;
   likelihood: number;
-  bucket: number;
+  bucketIndex: number;
 }
 
 interface BucketMetadata {
-  bucket: number;
+  index: number;
   likelihoodSum: number;
 }
 
 interface WordData {
-  entries: WordEntry[];
+  wordEntries: WordEntry[];
   buckets: BucketMetadata[];
-  totalLikelihoodSum: number;
 }
 
 export function getTop1000WordsWithLikelihoods(): WordData {
@@ -26,29 +25,28 @@ export function getTop1000WordsWithLikelihoods(): WordData {
   const jsonContent = readFileSync(jsonPath, "utf-8");
   const data = JSON.parse(jsonContent);
 
-  const entries: WordEntry[] = [];
+  const wordEntries: WordEntry[] = [];
   const buckets: BucketMetadata[] = [];
-  let totalLikelihoodSum = 0;
   let currentBucket = 1;
   let currentBucketSum = 0;
   let itemsInCurrentBucket = 0;
 
   for (let i = 0; i < Math.min(1000, data.length); i++) {
     const item = data[i];
-    const rank = parseInt(item.Rank);
-    const word = item["Best Single Word"];
-    const usefulness = parseInt(item["Usefulness Score"]);
+    const index = parseInt(item.index);
+    const words = item.words;
+    const score = parseInt(item.score);
 
-    if (!word || isNaN(usefulness)) continue;
+    if (!words || isNaN(score)) continue;
 
     const likelihood = generateLikelihood({
-      usefulness,
+      score,
     });
 
     // Check if we need to start a new bucket
     if (itemsInCurrentBucket === 40) {
       buckets.push({
-        bucket: currentBucket,
+        index: currentBucket,
         likelihoodSum: currentBucketSum,
       });
       currentBucket++;
@@ -56,31 +54,29 @@ export function getTop1000WordsWithLikelihoods(): WordData {
       itemsInCurrentBucket = 0;
     }
 
-    entries.push({
-      rank,
-      word,
-      usefulness,
+    wordEntries.push({
+      index,
+      words,
+      score,
       likelihood,
-      bucket: currentBucket,
+      bucketIndex: currentBucket,
     });
 
     currentBucketSum += likelihood;
-    totalLikelihoodSum += likelihood;
     itemsInCurrentBucket++;
   }
 
   // Add the last bucket if it has items
   if (itemsInCurrentBucket > 0) {
     buckets.push({
-      bucket: currentBucket,
+      index: currentBucket,
       likelihoodSum: currentBucketSum,
     });
   }
 
   return {
-    entries,
+    wordEntries,
     buckets,
-    totalLikelihoodSum,
   };
 }
 
@@ -89,9 +85,8 @@ function exportTop1000WordsToJson(): void {
   const jsonPath = join(__dirname, "baseline_1000_words.json");
 
   writeFileSync(jsonPath, JSON.stringify(wordData, null, 2), "utf-8");
-  console.log(`Exported ${wordData.entries.length} words to ${jsonPath}`);
+  console.log(`Exported ${wordData.wordEntries.length} words to ${jsonPath}`);
   console.log(`Total buckets: ${wordData.buckets.length}`);
-  console.log(`Total likelihood sum: ${wordData.totalLikelihoodSum}`);
 }
 
 exportTop1000WordsToJson();
