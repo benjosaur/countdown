@@ -28,7 +28,7 @@ export function getTop1000WordsWithLikelihoods(): BaselineWordData {
 
   const wordEntries: BaselineWordEntry[] = [];
   const buckets: BucketMetadata[] = [];
-  let currentBucket = 1;
+  let currentBucket = 0;
   let currentBucketSum = 0;
   let itemsInCurrentBucket = 0;
   let overallLikelihoodSum = 0;

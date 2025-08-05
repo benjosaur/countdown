@@ -26,7 +26,6 @@ export class WordSessionRepository {
     });
     try {
       const result = await client.send(command);
-      console.log(result.Items);
       const parsedItems = dbWordTrainerMetaQuerySchema
         .array()
         .parse(result.Items);

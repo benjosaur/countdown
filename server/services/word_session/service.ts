@@ -72,13 +72,9 @@ export class WordSessionService {
     const { userBucketLikelihoods, overallMetadata } =
       await this.getOverallBucketLikelihoodsAndMetadata(user);
 
-    const overallLikelihoodSum = userBucketLikelihoods.reduce(
-      (sum, record) => sum + record.likelihoodSum,
-      0
-    );
+    const overallLikelihoodSum = baseline.overallLikelihoodSum;
 
     const sampledLikelihood = Math.floor(Math.random() * overallLikelihoodSum);
-
     const chosenBucketIndex = this.findBucketContainingSampledLikelihood(
       sampledLikelihood,
       userBucketLikelihoods
@@ -154,8 +150,6 @@ export class WordSessionService {
     if (!targetWordBaselineDictEntry) {
       throw new Error(`Target word with index ${targetWordIndex} not found`);
     }
-
-    const bucketIndex = targetWordBaselineDictEntry.bucketIndex;
 
     if (isSubmittedWordTarget) {
       const update: DbUpdateWordTrainerAttempt = {
@@ -368,7 +362,7 @@ export class WordSessionService {
         };
       });
 
-    const overallUserBucketRecords = baseline.buckets.map((bucket) => {
+    const sumUserBucketRecords = baseline.buckets.map((bucket) => {
       const matchedUserBucket = userBucketDeltaLikelihoods.find(
         (record) => record.bucketIndex === bucket.index
       ) ?? {
@@ -383,7 +377,7 @@ export class WordSessionService {
 
     return {
       overallMetadata,
-      userBucketLikelihoods: overallUserBucketRecords,
+      userBucketLikelihoods: sumUserBucketRecords,
     };
   }
 
