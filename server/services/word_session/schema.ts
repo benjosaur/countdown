@@ -1,11 +1,12 @@
 import z from "zod";
 import { dbEntrySchema } from "../schema";
+import type { BaselineWordEntry } from "../../const/baseline_gen";
 
 export const dbWordTrainerWordSchema = dbEntrySchema.extend({
   // pK - USER#{user.sub}
   // sK - WORDTRAINER#BUCKET#{n}#WORD#{word in lower}
-  successUnder10: z.number().default(0),
-  successBetween10And20: z.number().default(0),
+  successDirectUnder10: z.number().default(0),
+  successDirectBetween10And20: z.number().default(0),
   fail: z.number().default(0),
   successIndirectUnder10: z.number().default(0),
   successIndirectBetween10And20: z.number().default(0),
@@ -24,10 +25,11 @@ export const dbMetaWordTrainerSchema = dbEntrySchema.extend(
   // pK - USER#{user.sub}
   // sK - META#WORDTRAINER
   dbWordTrainerWordSchema.pick({
-    successUnder10: true,
-    successBetween10And20: true,
+    successDirectUnder10: true,
+    successDirectBetween10And20: true,
     fail: true,
     averageSuccessTime: true,
+    deltaLikelihood: true,
   }).shape
 );
 
@@ -45,3 +47,13 @@ export type DbMetaWordTrainerBucket = z.infer<
 export type DbWordTrainerMetaQuery = z.infer<
   typeof dbWordTrainerMetaQuerySchema
 >;
+
+export interface DbUpdateWordTrainerAttempt {
+  submittedBaselineWordEntry: BaselineWordEntry;
+  chosenAnagram?: string;
+  timeTaken?: number;
+  category: keyof Omit<
+    DbWordTrainerWord,
+    "pK" | "sK" | "averageSuccessTime" | "deltaLikelihood" | "anagramCounters"
+  >;
+}

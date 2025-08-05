@@ -10,9 +10,7 @@ import {
   FOUR_VOWEL_CHANCE,
 } from "../../const/letters";
 import { WordPuzzleRepository } from "./repository";
-import type { WordPuzzle } from "shared";
-import type { WordData } from "./schema";
-import { is } from "zod/locales";
+import type { WordData, WordPuzzle } from "shared";
 
 let cachedWords: WordData[] | null = null; // store outside class to avoid reloading on every instance creation
 
@@ -102,6 +100,15 @@ export class WordPuzzleService {
     };
     // console.log(puzzle);
     return puzzle;
+  }
+
+  async checkWordInDict(submittedWord: string): Promise<WordData | null> {
+    // for use by WordSessionService
+    for (const entry of this.words) {
+      if (entry.anagrams.includes(submittedWord.toUpperCase())) return entry;
+      continue;
+    }
+    return null;
   }
 
   private removeLettersFromLetterPool(word: string): LetterPool {

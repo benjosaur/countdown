@@ -6,20 +6,28 @@ import {
   dbWordTrainerWordSchema,
   type DbMetaWordTrainer,
   type DbMetaWordTrainerBucket,
+  type DbUpdateWordTrainerAttempt,
+  type DbWordTrainerWord,
 } from "./schema";
-import type { WordPuzzle } from "shared";
+import type {
+  WordData,
+  WordPuzzle,
+  WordPuzzleSubmission,
+  WordPuzzleSubmissionResponse,
+} from "shared";
 import z from "zod";
+import { convertBaselineEntryToWordData } from "../../utils/words";
 
 interface OverallMetadata {
-  successUnder10: number;
-  successBetween10And20: number;
+  successDirectUnder10: number;
+  successDirectBetween10And20: number;
   fail: number;
   averageSuccessTime: number;
 }
 
 interface WordMetadata {
-  successUnder10: number;
-  successBetween10And20: number;
+  successDirectUnder10: number;
+  successDirectBetween10And20: number;
   fail: number;
   successIndirectUnder10: number;
   successIndirectBetween10And20: number;
@@ -111,12 +119,220 @@ export class WordSessionService {
     };
   }
 
+  async updateSubmission(
+    user: User,
+    submission: WordPuzzleSubmission
+  ): Promise<WordPuzzleSubmissionResponse> {
+    // Failed Submission
+    // Update Fail of Target.
+    //    - Update by Finding bucket index via baseline lookup via index
+    // Successful Submission
+    // Input 1. WordId/Rank 2. Submitted Word 3. As Primary or Secondary? 4. Record (Time or Fail)
+    // Possibilities (FE Should ensure anything submitted to BE is at least target word length AND valid from letter scramble)
+    // => 1. Submitted Word is NOT in dictionary
+    // => 2. Submitted Word IS in dictionary BUT NOT in tracked top 1000
+    // => 3. Submitted Word IS in dictionary AND in tracked top 1000 BUT NOT Target Word
+    // => 4. Submitted Word IS in dictionary AND in tracked top 1000 AND Target Word
+    // 1. Return Error
+    // 2. Return OK
+    // 3. Update SuccessIndirect10/Between10And20 in DDB Table. & Return OK
+    //    - Update by Finding bucket index via baseline lookup via rank id
+    // 4. Update Success10/successDirectBetween10And20 of Target.
+    //    - Update by Finding bucket index via baseline lookup via rank id
+    // All Success Table updates should include which anagram of the primary words was used
+
+    // Find word index, find bucket index, find associated entry in db table and then update.
+    const submittedWord = submission.submittedWord.toUpperCase();
+    const isSubmittedWordTarget =
+      submission.targetAnagrams.includes(submittedWord);
+
+    // below targets only relevant for direct success/failures (else update indirects/not at all)
+    const targetWordIndex = submission.index;
+    const targetWordBaselineDictEntry = baseline.wordEntries.find(
+      (wordEntry) => wordEntry.index === targetWordIndex
+    );
+    if (!targetWordBaselineDictEntry) {
+      throw new Error(`Target word with index ${targetWordIndex} not found`);
+    }
+
+    const bucketIndex = targetWordBaselineDictEntry.bucketIndex;
+
+    if (isSubmittedWordTarget) {
+      const update: DbUpdateWordTrainerAttempt = {
+        submittedBaselineWordEntry: targetWordBaselineDictEntry,
+        category: this.getSuccessfulTimeCategory({
+          time: submission.timeTaken,
+          isSuccessDirect: true,
+        }),
+      };
+      const {
+        oldWordEntry: oldWordDbEntry,
+        oldOverallMetadataEntry,
+        changeInOverallAverageSuccessTime,
+        changeInWordAverageSuccessTime,
+        changeInWordDeltaLikelihood,
+      } = await this.wordSessionRepository.updateUserRecord(user, update);
+      return {
+        isInDictionary: true,
+        isInTop1000: true,
+        overall: {
+          oldLikelihood:
+            oldOverallMetadataEntry.deltaLikelihood +
+            baseline.overallLikelihoodSum,
+          oldAverageSuccessTime: oldOverallMetadataEntry.averageSuccessTime,
+          changeInAverageSuccessTime: changeInOverallAverageSuccessTime,
+        },
+        targetWord: {
+          wordData: convertBaselineEntryToWordData(targetWordBaselineDictEntry),
+          oldLikelihood: oldWordDbEntry.deltaLikelihood,
+          changeInLikelihood: changeInWordDeltaLikelihood,
+          oldAverageSuccessTime: oldWordDbEntry.averageSuccessTime,
+          changeInAverageSuccessTime: changeInWordAverageSuccessTime,
+        },
+      };
+    }
+
+    if (submission.isFailed) {
+      const update: DbUpdateWordTrainerAttempt = {
+        submittedBaselineWordEntry: targetWordBaselineDictEntry,
+        category: "fail",
+      };
+      const {
+        oldWordEntry: oldWordDbEntry,
+        oldOverallMetadataEntry,
+        // below should be set to 0 and unchanged
+        changeInOverallAverageSuccessTime,
+        changeInWordAverageSuccessTime,
+        changeInWordDeltaLikelihood,
+      } = await this.wordSessionRepository.updateUserRecord(user, update);
+
+      return {
+        // if fail state activated by FE assume nothing relevant was submitted
+        isInDictionary: false,
+        isInTop1000: false,
+        overall: {
+          oldLikelihood:
+            oldOverallMetadataEntry.deltaLikelihood +
+            baseline.overallLikelihoodSum,
+          oldAverageSuccessTime: oldOverallMetadataEntry.averageSuccessTime,
+          changeInAverageSuccessTime: changeInOverallAverageSuccessTime,
+        },
+        targetWord: {
+          wordData: convertBaselineEntryToWordData(targetWordBaselineDictEntry),
+          oldLikelihood: oldWordDbEntry.deltaLikelihood,
+          changeInLikelihood: changeInWordDeltaLikelihood,
+          oldAverageSuccessTime: oldWordDbEntry.averageSuccessTime,
+          changeInAverageSuccessTime: changeInWordAverageSuccessTime,
+        },
+      };
+    }
+
+    const matchedTop1000WordEntryToSubmitted = baseline.wordEntries.find(
+      (entry) => entry.words.includes(submittedWord)
+    );
+    if (matchedTop1000WordEntryToSubmitted) {
+      const update: DbUpdateWordTrainerAttempt = {
+        submittedBaselineWordEntry: matchedTop1000WordEntryToSubmitted,
+        chosenAnagram: submittedWord,
+        category: this.getSuccessfulTimeCategory({
+          time: submission.timeTaken,
+          isSuccessDirect: false,
+        }),
+      };
+      const {
+        oldWordEntry: oldWordDbEntry,
+        oldOverallMetadataEntry,
+        // below should be set to 0 and unchanged
+        changeInOverallAverageSuccessTime,
+        changeInWordAverageSuccessTime,
+        changeInWordDeltaLikelihood,
+      } = await this.wordSessionRepository.updateUserRecord(user, update);
+
+      return {
+        isInDictionary: true,
+        isInTop1000: true,
+        overall: {
+          oldLikelihood:
+            oldOverallMetadataEntry.deltaLikelihood +
+            baseline.overallLikelihoodSum,
+          oldAverageSuccessTime: oldOverallMetadataEntry.averageSuccessTime,
+          changeInAverageSuccessTime: changeInOverallAverageSuccessTime,
+        },
+        targetWord: {
+          wordData: convertBaselineEntryToWordData(targetWordBaselineDictEntry),
+        },
+        submittedWord: {
+          wordData: convertBaselineEntryToWordData(targetWordBaselineDictEntry),
+          oldLikelihood: oldWordDbEntry.deltaLikelihood,
+          changeInLikelihood: changeInWordDeltaLikelihood,
+          oldAverageSuccessTime: oldWordDbEntry.averageSuccessTime,
+          changeInAverageSuccessTime: changeInWordAverageSuccessTime,
+        },
+      };
+    }
+    const matchedEntireDictEntryToSubmitted =
+      await this.wordPuzzleService.checkWordInDict(submittedWord);
+    if (matchedEntireDictEntryToSubmitted) {
+      const oldOverallMetadataEntry =
+        await this.wordSessionRepository.getOldOverallMetadataEntry(user);
+      return {
+        isInDictionary: true,
+        isInTop1000: false,
+        overall: {
+          oldLikelihood:
+            oldOverallMetadataEntry.deltaLikelihood +
+            baseline.overallLikelihoodSum,
+          oldAverageSuccessTime: oldOverallMetadataEntry.averageSuccessTime,
+          changeInAverageSuccessTime: 0,
+        },
+        targetWord: {
+          wordData: convertBaselineEntryToWordData(targetWordBaselineDictEntry),
+        },
+      };
+    }
+    // must still be incorrect despite not being explicitly flagged by FE.
+    const update: DbUpdateWordTrainerAttempt = {
+      submittedBaselineWordEntry: targetWordBaselineDictEntry,
+      category: "fail",
+    };
+    const {
+      oldWordEntry: oldWordDbEntry,
+      oldOverallMetadataEntry,
+      // below should be set to 0 and unchanged
+      changeInOverallAverageSuccessTime,
+      changeInWordAverageSuccessTime,
+      changeInWordDeltaLikelihood,
+    } = await this.wordSessionRepository.updateUserRecord(user, update);
+
+    return {
+      // if fail state activated by FE assume nothing relevant was submitted
+      isInDictionary: false,
+      isInTop1000: false,
+      overall: {
+        oldLikelihood:
+          oldOverallMetadataEntry.deltaLikelihood +
+          baseline.overallLikelihoodSum,
+        oldAverageSuccessTime: oldOverallMetadataEntry.averageSuccessTime,
+        changeInAverageSuccessTime: changeInOverallAverageSuccessTime,
+      },
+      targetWord: {
+        wordData: convertBaselineEntryToWordData(targetWordBaselineDictEntry),
+        oldLikelihood: oldWordDbEntry.deltaLikelihood,
+        changeInLikelihood: changeInWordDeltaLikelihood,
+        oldAverageSuccessTime: oldWordDbEntry.averageSuccessTime,
+        changeInAverageSuccessTime: changeInWordAverageSuccessTime,
+      },
+    };
+  }
+
   private async getOverallBucketLikelihoodsAndMetadata(user: User): Promise<{
     userBucketLikelihoods: OverallBucketLikelihoodEntry[];
     overallMetadata: OverallMetadata;
   }> {
     const dbUserMetaRecords =
-      await this.wordSessionRepository.getTargetWordsUserMetaRecords(user);
+      await this.wordSessionRepository.getUserOverallAndBucketMetaDataRecords(
+        user
+      );
 
     const dbOverallMetadata =
       dbUserMetaRecords.find(
@@ -193,7 +409,7 @@ export class WordSessionService {
     bucketIndex: number
   ): Promise<OverallWordLikelihoodEntryWithMetadata[]> {
     const userWordDeltaLikelihoodsInBucket =
-      await this.wordSessionRepository.getTargetWordsUserRecordsInBucket(
+      await this.wordSessionRepository.getUserWordRecordsForBucket(
         user,
         bucketIndex
       );
@@ -247,25 +463,27 @@ export class WordSessionService {
       `No valid word entry found for sampled likelihood ${residualSampledLikelihood}`
     );
   }
+
+  private getSuccessfulTimeCategory({
+    time,
+    isSuccessDirect,
+  }: {
+    time: number;
+    isSuccessDirect: boolean;
+  }): keyof Omit<
+    DbWordTrainerWord,
+    "pK" | "sK" | "averageSuccessTime" | "deltaLikelihood" | "anagramCounters"
+  > {
+    if (isSuccessDirect && time < 10) {
+      return "successDirectUnder10";
+    } else if (isSuccessDirect && time >= 10) {
+      return "successDirectBetween10And20";
+    } else if (!isSuccessDirect && time < 10) {
+      return "successIndirectUnder10";
+    } else if (!isSuccessDirect && time >= 10) {
+      return "successIndirectBetween10And20";
+    } else {
+      throw new Error(`Time: ${time}, Direct: ${isSuccessDirect} broke maths`);
+    }
+  }
 }
-
-// Failed Submission
-// Update Fail of Target.
-//    - Update by Finding bucket index via baseline lookup via index
-
-// Successful Submission
-// Input 1. WordId/Rank 2. Submitted Word 3. As Primary or Secondary? 4. Record (Time or Fail)
-// Possibilities (FE Should ensure anything submitted to BE is at least target word length AND valid from letter scramble)
-// => 1. Submitted Word is NOT in dictionary
-// => 2. Submitted Word IS in dictionary BUT NOT in tracked top 1000
-// => 3. Submitted Word IS in dictionary AND in tracked top 1000 BUT NOT Target Word
-// => 4. Submitted Word IS in dictionary AND in tracked top 1000 AND Target Word
-
-// 1. Return Error
-// 2. Return OK
-// 3. Update SuccessIndirect10/Between10And20 in DDB Table. & Return OK
-//    - Update by Finding bucket index via baseline lookup via rank id
-// 4. Update Success10/SuccessBetween10And20 of Target.
-//    - Update by Finding bucket index via baseline lookup via rank id
-
-// All Success Table updates should include which anagram of the primary words was used

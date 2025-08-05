@@ -1,5 +1,6 @@
-import type { JsonUsefulWordsRow, WordData } from "./schema";
+import type { JsonUsefulWordsRow } from "./schema";
 import rawWordsData from "../../const/useful_words.json";
+import type { WordData } from "shared";
 
 export class WordPuzzleRepository {
   getWords(): WordData[] {

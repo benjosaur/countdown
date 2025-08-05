@@ -1,14 +1,18 @@
-import { QueryCommand } from "@aws-sdk/lib-dynamodb";
+import { QueryCommand, TransactWriteCommand } from "@aws-sdk/lib-dynamodb";
 import { client, TABLE_NAME } from "../dynamo";
 import {
+  dbMetaWordTrainerSchema,
   dbWordTrainerMetaQuerySchema,
   dbWordTrainerWordSchema,
+  type DbMetaWordTrainer,
+  type DbUpdateWordTrainerAttempt,
   type DbWordTrainerMetaQuery,
   type DbWordTrainerWord,
 } from "./schema";
+import { generateLikelihood } from "../../utils/words";
 
 export class WordSessionRepository {
-  async getTargetWordsUserMetaRecords(
+  async getUserOverallAndBucketMetaDataRecords(
     user: User
   ): Promise<DbWordTrainerMetaQuery[]> {
     // bucket sums and overall sums
@@ -33,7 +37,7 @@ export class WordSessionRepository {
     }
   }
 
-  async getTargetWordsUserRecordsInBucket(
+  async getUserWordRecordsForBucket(
     user: User,
     bucketIndex: number
   ): Promise<DbWordTrainerWord[]> {
@@ -57,5 +61,237 @@ export class WordSessionRepository {
       );
       throw error;
     }
+  }
+
+  async updateUserRecord(user: User, update: DbUpdateWordTrainerAttempt) {
+    // need bucket id, word id, time taken, and which of the enums it was.
+
+    if (update.chosenAnagram && update.category === "fail")
+      throw new Error("Should not provide a chosen anagram if failed");
+
+    const oldWordEntry = await this.getOldWordEntry(
+      user,
+      update.submittedBaselineWordEntry.bucketIndex,
+      update.submittedBaselineWordEntry.index
+    );
+
+    // only compute new times and deltalikelihoods, count update left for ddb update expression
+    const { changeInWordDeltaLikelihood, changeInWordAverageSuccessTime } =
+      this.computeChangeInWordMetrics(oldWordEntry, update);
+
+    const oldOverallMetadataEntry = await this.getOldOverallMetadataEntry(user);
+
+    const { changeInOverallAverageSuccessTime } =
+      this.computeChangeInOverallMetrics(oldOverallMetadataEntry, update);
+
+    const transactWriteCommand = new TransactWriteCommand({
+      TransactItems: [
+        {
+          Update: {
+            TableName: TABLE_NAME,
+            Key: {
+              pK: `USER#${user.sub}`,
+              sK: `WORDTRAINER#BUCKET#${update.submittedBaselineWordEntry.bucketIndex}#WORD#${update.submittedBaselineWordEntry.index}`,
+            },
+            UpdateExpression: update.chosenAnagram
+              ? "ADD #attemptCategory :one, #deltaLikelihood :changeInDeltaLikelihood, #averageSuccessTime :changeInAverageSuccessTime SET anagramCounts.#chosenAnagram = if_not_exists(anagramCounts.#chosenAnagram, :zero) + :one"
+              : "ADD #attemptCategory :one, #deltaLikelihood :changeInDeltaLikelihood, #averageSuccessTime :changeInAverageSuccessTime",
+            ExpressionAttributeNames: update.chosenAnagram
+              ? {
+                  "#attemptCategory": update.category,
+                  "#deltaLikelihood": "deltaLikelihood",
+                  "#averageSuccessTime": "averageSuccessTime",
+                  "#chosenAnagram": update.chosenAnagram,
+                }
+              : {
+                  "#attemptCategory": update.category,
+                  "#deltaLikelihood": "deltaLikelihood",
+                  "#averageSuccessTime": "averageSuccessTime",
+                },
+            ExpressionAttributeValues: update.chosenAnagram
+              ? {
+                  ":one": 1,
+                  ":zero": 0,
+                  ":changeInAverageSuccessTime": changeInWordAverageSuccessTime,
+                  ":changeInDeltaLikelihood": changeInWordDeltaLikelihood,
+                }
+              : {
+                  ":one": 1,
+                  ":changeInAverageSuccessTime": changeInWordAverageSuccessTime,
+                  ":changeInDeltaLikelihood": changeInWordDeltaLikelihood,
+                },
+          },
+        },
+        {
+          Update: {
+            TableName: TABLE_NAME,
+            Key: {
+              pK: `USER#${user.sub}`,
+              sK: `META#WORDTRAINER#BUCKET#${update.submittedBaselineWordEntry.bucketIndex}`,
+            },
+            UpdateExpression: "ADD #deltaLikelihood :changeInDeltaLikelihood",
+            ExpressionAttributeNames: {
+              "#deltaLikelihood": "deltaLikelihood",
+            },
+            ExpressionAttributeValues: {
+              ":changeInDeltaLikelihood": changeInWordDeltaLikelihood,
+            },
+          },
+        },
+        {
+          Update: {
+            TableName: TABLE_NAME,
+            Key: {
+              pK: `USER#${user.sub}`,
+              sK: `META#WORDTRAINER`,
+            },
+            UpdateExpression:
+              "ADD #attemptCategory :one, #averageSuccessTime :changeInAverageSuccessTime, #deltaLikelihood :changeInDeltaLikelihood",
+            ExpressionAttributeNames: {
+              "#attemptCategory": update.category,
+              "#averageSuccessTime": "averageSuccessTime",
+              "#deltaLikelihood": "deltaLikelihood",
+            },
+            ExpressionAttributeValues: {
+              ":one": 1,
+              ":changeInAverageSuccessTime": changeInOverallAverageSuccessTime,
+              ":changeInDeltaLikelihood": changeInWordDeltaLikelihood,
+            },
+          },
+        },
+      ],
+    });
+    try {
+      await client.send(transactWriteCommand);
+    } catch (error) {
+      console.error("Error sending transaction write command:", error);
+    }
+    return {
+      oldWordEntry,
+      oldOverallMetadataEntry,
+      changeInWordDeltaLikelihood,
+      changeInWordAverageSuccessTime,
+      changeInOverallAverageSuccessTime,
+    };
+  }
+
+  private async getOldWordEntry(
+    user: User,
+    bucketIndex: number,
+    wordIndex: number
+  ): Promise<DbWordTrainerWord> {
+    const oldWordEntriesInBucketData = await this.getUserWordRecordsForBucket(
+      user,
+      bucketIndex
+    );
+
+    let oldWordEntry = oldWordEntriesInBucketData.find((entry) => {
+      const wordIndexInBucket = parseInt(entry.sK.split("#").pop()!);
+      return wordIndexInBucket === wordIndex;
+    });
+
+    if (!oldWordEntry) {
+      oldWordEntry = dbWordTrainerWordSchema.parse({
+        pK: "",
+        sK: "",
+      });
+    }
+    return oldWordEntry;
+  }
+
+  async getOldOverallMetadataEntry(user: User) {
+    const oldBucketsAndOverallMetadata =
+      await this.getUserOverallAndBucketMetaDataRecords(user);
+
+    let oldWordTrainerMetadata = oldBucketsAndOverallMetadata.find(
+      (entry): entry is DbMetaWordTrainer => entry.sK == "META#WORDTRAINER"
+    );
+
+    if (!oldWordTrainerMetadata) {
+      oldWordTrainerMetadata = dbMetaWordTrainerSchema.parse({
+        pK: "",
+        sK: "",
+      });
+    }
+    return oldWordTrainerMetadata;
+  }
+
+  private computeChangeInWordMetrics(
+    oldWordEntry: DbWordTrainerWord,
+    update: DbUpdateWordTrainerAttempt
+  ) {
+    //delta likelihood "delta" is strictly the running difference vs baseline likelihood @ 0 guesses. NOT delta in a time series/guess to guess sense.
+    const {
+      pK,
+      sK,
+      averageSuccessTime,
+      deltaLikelihood,
+      anagramCounters,
+      ...oldCounts
+    } = oldWordEntry;
+
+    const newCounts = {
+      ...oldCounts,
+      [update.category]: oldWordEntry[update.category] + 1,
+    };
+
+    const newLikelihood = generateLikelihood({
+      score: update.submittedBaselineWordEntry.score,
+      ...newCounts,
+    });
+
+    const baseLikelihood = generateLikelihood({
+      score: update.submittedBaselineWordEntry.score,
+    });
+
+    const changeInWordDeltaLikelihood =
+      newLikelihood - baseLikelihood - deltaLikelihood;
+
+    let changeInWordAverageSuccessTime = 0;
+
+    if (update.timeTaken) {
+      const { fail, ...oldSuccessCounts } = oldCounts;
+
+      const newAverageTime =
+        Object.values(oldSuccessCounts).reduce((sum, count) => sum + count, 0) *
+          averageSuccessTime +
+        update.timeTaken;
+      changeInWordAverageSuccessTime = newAverageTime - averageSuccessTime;
+    }
+    return {
+      changeInWordDeltaLikelihood,
+      changeInWordAverageSuccessTime,
+    };
+  }
+
+  private computeChangeInOverallMetrics(
+    oldWordTrainerMetadata: DbMetaWordTrainer,
+    update: DbUpdateWordTrainerAttempt
+  ) {
+    const {
+      pK: overallPk,
+      sK: overallSk,
+      averageSuccessTime: averageOverallSuccessTime,
+      ...oldOverallCounts
+    } = oldWordTrainerMetadata;
+
+    const { fail: overallFail, ...oldOverallSuccessCounts } = oldOverallCounts;
+
+    let changeInOverallAverageSuccessTime = 0;
+
+    if (update.timeTaken) {
+      const newOverallAverageTime =
+        Object.values(oldOverallSuccessCounts).reduce(
+          (sum, count) => sum + count,
+          0
+        ) *
+          averageOverallSuccessTime +
+        update.timeTaken;
+      changeInOverallAverageSuccessTime =
+        newOverallAverageTime - averageOverallSuccessTime;
+    }
+    return {
+      changeInOverallAverageSuccessTime,
+    };
   }
 }

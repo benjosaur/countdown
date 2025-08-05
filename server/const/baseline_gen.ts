@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import { generateLikelihood } from "../utils/words";
 
-interface WordEntry {
+export interface BaselineWordEntry {
   index: number;
   words: string;
   score: number;
@@ -15,21 +15,23 @@ interface BucketMetadata {
   likelihoodSum: number;
 }
 
-interface WordData {
-  wordEntries: WordEntry[];
+interface BaselineWordData {
+  wordEntries: BaselineWordEntry[];
   buckets: BucketMetadata[];
+  overallLikelihoodSum: number;
 }
 
-export function getTop1000WordsWithLikelihoods(): WordData {
+export function getTop1000WordsWithLikelihoods(): BaselineWordData {
   const jsonPath = join(__dirname, "useful_words.json");
   const jsonContent = readFileSync(jsonPath, "utf-8");
   const data = JSON.parse(jsonContent);
 
-  const wordEntries: WordEntry[] = [];
+  const wordEntries: BaselineWordEntry[] = [];
   const buckets: BucketMetadata[] = [];
   let currentBucket = 1;
   let currentBucketSum = 0;
   let itemsInCurrentBucket = 0;
+  let overallLikelihoodSum = 0;
 
   for (let i = 0; i < Math.min(1000, data.length); i++) {
     const item = data[i];
@@ -42,6 +44,8 @@ export function getTop1000WordsWithLikelihoods(): WordData {
     const likelihood = generateLikelihood({
       score,
     });
+
+    overallLikelihoodSum += likelihood;
 
     // Check if we need to start a new bucket
     if (itemsInCurrentBucket === 40) {
@@ -77,6 +81,7 @@ export function getTop1000WordsWithLikelihoods(): WordData {
   return {
     wordEntries,
     buckets,
+    overallLikelihoodSum,
   };
 }
 

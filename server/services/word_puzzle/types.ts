@@ -1,5 +1,7 @@
-export interface WordEntry {
-  rank: number;
+// deprecated ??
+
+export interface DictionaryWordEntry {
+  index: number;
   alphagram: string;
   words: string[];
   removedAnagrams: string;
