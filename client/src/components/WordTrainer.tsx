@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Trophy, Clock } from "lucide-react";
+import { ArrowLeft, Trophy, Clock, Send } from "lucide-react";
 import { FlashCard } from "./FlashCard";
 import { trpc } from "../utils/trpc";
 import type { WordPuzzle } from "shared";
@@ -48,13 +48,14 @@ export function WordTrainer() {
       console.log(result.data);
       if (result.data) {
         setCurrentGame(result.data.puzzle);
-        setCountdown(30);
+        setCountdown(20);
         setIsCountdownActive(true);
         setShowWord(false);
         setGuess("");
         setStartTime(Date.now());
         setGuessTime(null);
         setRestartCountdown(null);
+        setIsShorterWordGuessed(false);
 
         // Focus input after state updates
         setTimeout(() => {
@@ -66,21 +67,16 @@ export function WordTrainer() {
     }
   }, [getNewGame]);
 
-  const handleGuessChange = async (value: string) => {
+  const handleGuessChange = (value: string) => {
     setGuess(value);
+  };
 
-    if (!currentGame || !startTime) return;
+  const handleSubmitGuess = () => {
+    if (!currentGame || !startTime || !guess.trim()) return;
 
-    const upperGuess = value.toUpperCase();
+    const upperGuess = guess.toUpperCase();
 
-    if (
-      !currentGame.primaryWords.includes(upperGuess) &&
-      currentGame.correctWords.includes(upperGuess)
-    ) {
-      setIsShorterWordGuessed(true);
-    }
-
-    // Check if guess matches the word
+    // Check if guess matches the primary word
     if (currentGame.primaryWords.includes(upperGuess)) {
       const endTime = Date.now();
       const timeUsed = endTime - startTime;
@@ -88,7 +84,12 @@ export function WordTrainer() {
       setIsShorterWordGuessed(false);
       setIsCountdownActive(false);
       setShowWord(true);
-      setRestartCountdown(3);
+    } else if (currentGame.correctWords.includes(upperGuess)) {
+      // It's a shorter correct word
+      setIsShorterWordGuessed(true);
+    } else {
+      // Reset the shorter word flag if guess is incorrect
+      setIsShorterWordGuessed(false);
     }
   };
 
@@ -101,23 +102,25 @@ export function WordTrainer() {
       setIsCountdownActive(false);
       setIsShorterWordGuessed(false);
       setShowWord(true);
-      setRestartCountdown(3);
     }
     return () => clearTimeout(timer);
   }, [countdown, isCountdownActive, currentGame, startTime]);
 
+  // Global keydown handler for Enter key
   useEffect(() => {
-    let timer: number;
-    if (restartCountdown !== null && restartCountdown > 0) {
-      timer = window.setTimeout(
-        () => setRestartCountdown(restartCountdown - 1),
-        1000
-      );
-    } else if (restartCountdown === 0) {
-      startNewRound();
-    }
-    return () => clearTimeout(timer);
-  }, [restartCountdown, startNewRound]);
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        if (showWord) {
+          startNewRound();
+        } else if (isCountdownActive) {
+          handleSubmitGuess();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [showWord, guess]);
 
   // Start first round on mount
   useEffect(() => {
@@ -177,6 +180,19 @@ export function WordTrainer() {
             inputRef={inputRef}
           />
 
+          {isCountdownActive && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={handleSubmitGuess}
+                disabled={!guess.trim()}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Send size={20} />
+                Submit Guess
+              </button>
+            </div>
+          )}
+
           {showWord && (
             <div className="mt-8 p-6 bg-white rounded-lg shadow-md text-center">
               <div className="flex items-center justify-center gap-2 mb-4">
@@ -199,11 +215,17 @@ export function WordTrainer() {
                 </p>
               )}
 
-              {restartCountdown !== null && (
-                <p className="text-blue-600">
-                  Next round starting in {restartCountdown} seconds...
+              <div className="mt-6">
+                <button
+                  onClick={startNewRound}
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+                >
+                  Next Round
+                </button>
+                <p className="text-sm text-blue-600 mt-2">
+                  Press Enter or click the button to continue
                 </p>
-              )}
+              </div>
             </div>
           )}
         </div>
