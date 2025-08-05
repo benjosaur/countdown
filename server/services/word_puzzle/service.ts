@@ -63,14 +63,13 @@ export class WordPuzzleService {
       targetWord.anagrams[0]!
     );
 
-    const { letters: gameLetters, isExistsEqualOrBetterWord } =
-      this.fillRemainingLetters(
-        filteredLetterPool,
-        filteredWordPool,
-        targetWord.anagrams[0]!,
-        spacesLeftToFill,
-        targetVowels
-      );
+    const gameLetters = this.fillRemainingLetters(
+      filteredLetterPool,
+      filteredWordPool,
+      targetWord.anagrams[0]!,
+      spacesLeftToFill,
+      targetVowels
+    );
 
     const correctWords = [...targetWord.anagrams];
 
@@ -96,7 +95,6 @@ export class WordPuzzleService {
       primaryWords: targetWord.anagrams,
       correctWords: correctWords,
       index: targetWord.index,
-      isExistsEqualOrBetterWord,
     };
     // console.log(puzzle);
     return puzzle;
@@ -129,7 +127,7 @@ export class WordPuzzleService {
     chosenWord: string,
     numberLeftToFill: number,
     targetVowels: number
-  ): { letters: string[]; isExistsEqualOrBetterWord: boolean } {
+  ): string[] {
     // sample candidate letters first then check constraints.
     for (let i = 0; i < MAX_RETRIES; i++) {
       // need a copy *here* to anchor conditional prob of below sample without replacement BUT if fail then need to reset letter pool.
@@ -163,8 +161,16 @@ export class WordPuzzleService {
         letters.join("")
       );
       if (i === MAX_RETRIES - 1) {
-        // console.log("Reached max retries, using unrestricted letters");
-        return { letters, isExistsEqualOrBetterWord: true };
+        // Give Up Arm
+        const remainingFilledWithX = letters.concat(
+          Array(TOTAL_LETTERS - letters.length).fill("X")
+        );
+        if (remainingFilledWithX.length !== TOTAL_LETTERS) {
+          throw new Error(
+            `Unexpected: remainingFilledWithX length ${remainingFilledWithX.length} does not match TOTAL_LETTERS ${TOTAL_LETTERS}`
+          );
+        }
+        return remainingFilledWithX;
       }
       if (vowelCount < 3 || consonantCount < 4)
         throw new Error(
@@ -175,7 +181,7 @@ export class WordPuzzleService {
         // console.log("failed here");
         continue;
       }
-      return { letters, isExistsEqualOrBetterWord: false };
+      return letters;
     }
     throw new Error("Unexpected: loop should always return");
   }

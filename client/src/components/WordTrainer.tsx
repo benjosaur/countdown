@@ -47,7 +47,7 @@ export function WordTrainer() {
       const result = await getNewGame();
       console.log(result.data);
       if (result.data) {
-        setCurrentGame(result.data);
+        setCurrentGame(result.data.puzzle);
         setCountdown(30);
         setIsCountdownActive(true);
         setShowWord(false);

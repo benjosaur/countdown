@@ -1,19 +1,20 @@
 import { describe, it, expect } from "bun:test";
-import { WordService } from "./service";
+import { WordPuzzleService } from "./service";
 
 describe("WordService", () => {
   describe("generatePuzzle", () => {
     it("should generate puzzle with 9 letters", async () => {
-      const wordService = new WordService();
-      const puzzle = await wordService.generatePuzzle();
+      const wordService = new WordPuzzleService();
+      const testWordIndex = 1;
+      const puzzle = await wordService.generatePuzzle(testWordIndex);
       expect(puzzle.letters.length).toBe(9);
     });
   });
 });
 
-describe("WordService Private Functions", () => {
+describe("WordPuzzleService Private Functions", () => {
   describe("isDictWordPossibleTest", () => {
-    const wordService = new WordService();
+    const wordService = new WordPuzzleService();
     it("should return true when dict word possible to form from chosen", () => {
       const result = wordService["isDictWordPossible"]("REDRAW", "DRAWERS");
       expect(result).toBe(true);

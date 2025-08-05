@@ -1,3 +1,13 @@
+import z from "zod";
+
+export const wordPuzzleSubmissionSchema = z.object({
+  index: z.number(),
+  targetAnagrams: z.array(z.string()),
+  submittedWord: z.string().transform((arg) => arg.toUpperCase()),
+  timeTaken: z.number(),
+  isFailed: z.boolean(),
+});
+
 export interface WordData {
   index: number;
   anagrams: string[];
@@ -8,8 +18,6 @@ export interface WordPuzzle {
   primaryWords: string[];
   correctWords: string[];
   index: number;
-  // Indicates if puzzle could not avoid existence of another word \geq target
-  isExistsEqualOrBetterWord: boolean;
 }
 
 export interface WordPuzzleSubmission {

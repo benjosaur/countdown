@@ -35,7 +35,7 @@ interface WordMetadata {
   anagramCounters: Record<string, number>;
 }
 
-interface GetPuzzleResult {
+export interface GetPuzzleResult {
   puzzle: WordPuzzle;
   metadata: {
     word: WordMetadata;
