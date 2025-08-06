@@ -162,9 +162,9 @@ export class WordPuzzleService {
       );
       if (i === MAX_RETRIES - 1) {
         // Give Up Arm
-        const remainingFilledWithX = letters.concat(
-          Array(TOTAL_LETTERS - letters.length).fill("X")
-        );
+        const remainingFilledWithX = chosenWord
+          .split("")
+          .concat(Array(TOTAL_LETTERS - chosenWord.split("").length).fill("X"));
         if (remainingFilledWithX.length !== TOTAL_LETTERS) {
           throw new Error(
             `Unexpected: remainingFilledWithX length ${remainingFilledWithX.length} does not match TOTAL_LETTERS ${TOTAL_LETTERS}`
@@ -181,6 +181,7 @@ export class WordPuzzleService {
         // console.log("failed here");
         continue;
       }
+      console.log(MAX_RETRIES - i, "remaining retries");
       return letters;
     }
     throw new Error("Unexpected: loop should always return");
