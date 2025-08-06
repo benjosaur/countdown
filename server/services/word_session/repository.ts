@@ -5,7 +5,8 @@ import {
   dbWordTrainerMetaQuerySchema,
   dbWordTrainerWordSchema,
   type DbMetaWordTrainer,
-  type DbUpdateWordTrainerAttempt,
+  type DbUpdateWordTrainerFailAttempt,
+  type DbUpdateWordTrainerSuccessAttempt,
   type DbWordTrainerMetaQuery,
   type DbWordTrainerWord,
 } from "./schema";
@@ -62,17 +63,26 @@ export class WordSessionRepository {
     }
   }
 
-  async updateUserRecord(user: User, update: DbUpdateWordTrainerAttempt) {
+  async updateUserRecord(
+    user: User,
+    update: DbUpdateWordTrainerSuccessAttempt | DbUpdateWordTrainerFailAttempt
+  ) {
     // need bucket id, word id, time taken, and which of the enums it was.
-
-    if (update.chosenAnagram && update.category === "fail")
-      throw new Error("Should not provide a chosen anagram if failed");
 
     const oldWordEntry = await this.getOldWordEntry(
       user,
       update.submittedBaselineWordEntry.bucketIndex,
       update.submittedBaselineWordEntry.index
     );
+
+    const newAnagramCounters =
+      update.category !== "fail"
+        ? {
+            ...oldWordEntry.anagramCounters,
+            [update.chosenAnagram]:
+              (oldWordEntry.anagramCounters[update.chosenAnagram] || 0) + 1,
+          }
+        : oldWordEntry.anagramCounters;
 
     // only compute new times and deltalikelihoods, count update left for ddb update expression
     const { changeInWordDeltaLikelihood, changeInWordAverageSuccessTime } =
@@ -92,33 +102,21 @@ export class WordSessionRepository {
               pK: `USER#${user.sub}`,
               sK: `WORDTRAINER#BUCKET#${update.submittedBaselineWordEntry.bucketIndex}#WORD#${update.submittedBaselineWordEntry.index}`,
             },
-            UpdateExpression: update.chosenAnagram
-              ? "ADD #attemptCategory :one, #deltaLikelihood :changeInDeltaLikelihood, #averageSuccessTime :changeInAverageSuccessTime SET anagramCounts.#chosenAnagram = if_not_exists(anagramCounts.#chosenAnagram, :zero) + :one"
-              : "ADD #attemptCategory :one, #deltaLikelihood :changeInDeltaLikelihood, #averageSuccessTime :changeInAverageSuccessTime",
-            ExpressionAttributeNames: update.chosenAnagram
-              ? {
-                  "#attemptCategory": update.category,
-                  "#deltaLikelihood": "deltaLikelihood",
-                  "#averageSuccessTime": "averageSuccessTime",
-                  "#chosenAnagram": update.chosenAnagram,
-                }
-              : {
-                  "#attemptCategory": update.category,
-                  "#deltaLikelihood": "deltaLikelihood",
-                  "#averageSuccessTime": "averageSuccessTime",
-                },
-            ExpressionAttributeValues: update.chosenAnagram
-              ? {
-                  ":one": 1,
-                  ":zero": 0,
-                  ":changeInAverageSuccessTime": changeInWordAverageSuccessTime,
-                  ":changeInDeltaLikelihood": changeInWordDeltaLikelihood,
-                }
-              : {
-                  ":one": 1,
-                  ":changeInAverageSuccessTime": changeInWordAverageSuccessTime,
-                  ":changeInDeltaLikelihood": changeInWordDeltaLikelihood,
-                },
+            UpdateExpression:
+              "ADD #attemptCategory :one, #deltaLikelihood :changeInDeltaLikelihood, #averageSuccessTime :changeInAverageSuccessTime SET #anagramCounts = :anagramCounts",
+            ExpressionAttributeNames: {
+              "#attemptCategory": update.category,
+              "#deltaLikelihood": "deltaLikelihood",
+              "#averageSuccessTime": "averageSuccessTime",
+              "#anagramCounts": "anagramCounters",
+            },
+
+            ExpressionAttributeValues: {
+              ":one": 1,
+              ":changeInAverageSuccessTime": changeInWordAverageSuccessTime,
+              ":changeInDeltaLikelihood": changeInWordDeltaLikelihood,
+              ":anagramCounts": newAnagramCounters,
+            },
           },
         },
         {
@@ -217,7 +215,7 @@ export class WordSessionRepository {
 
   private computeChangeInWordMetrics(
     oldWordEntry: DbWordTrainerWord,
-    update: DbUpdateWordTrainerAttempt
+    update: DbUpdateWordTrainerSuccessAttempt | DbUpdateWordTrainerFailAttempt
   ) {
     //delta likelihood "delta" is strictly the running difference vs baseline likelihood @ 0 guesses. NOT delta in a time series/guess to guess sense.
     const {
@@ -248,7 +246,9 @@ export class WordSessionRepository {
 
     let changeInWordAverageSuccessTime = 0;
 
-    if (update.timeTaken) {
+    const isFailure = update.category === "fail";
+
+    if (!isFailure) {
       const { fail, ...oldSuccessCounts } = oldCounts;
 
       const newAverageTime =
@@ -265,7 +265,7 @@ export class WordSessionRepository {
 
   private computeChangeInOverallMetrics(
     oldWordTrainerMetadata: DbMetaWordTrainer,
-    update: DbUpdateWordTrainerAttempt
+    update: DbUpdateWordTrainerSuccessAttempt | DbUpdateWordTrainerFailAttempt
   ) {
     const {
       pK: overallPk,
@@ -278,7 +278,9 @@ export class WordSessionRepository {
 
     let changeInOverallAverageSuccessTime = 0;
 
-    if (update.timeTaken) {
+    const isFailure = update.category === "fail";
+
+    if (!isFailure) {
       const newOverallAverageTime =
         Object.values(oldOverallSuccessCounts).reduce(
           (sum, count) => sum + count,

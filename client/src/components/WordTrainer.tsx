@@ -4,7 +4,7 @@ import { ArrowLeft, Trophy, Clock, Send } from "lucide-react";
 import { FlashCard } from "./FlashCard";
 import { trpc } from "../utils/trpc";
 import type { WordPuzzle } from "shared";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { cn } from "@/utils/cn";
 import { getCurrentUser } from "aws-amplify/auth";
 
@@ -40,13 +40,16 @@ export function WordTrainer() {
   const [guessTime, setGuessTime] = useState<number | null>(null);
   const [restartCountdown, setRestartCountdown] = useState<number | null>(null);
   const [isShorterWordGuessed, setIsShorterWordGuessed] = useState(false);
+  const [showLengthWarning, setShowLengthWarning] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: newGame, refetch: getNewGame } = useQuery(
     trpc.wordTrainer.getNewGame.queryOptions(undefined, { enabled: false })
   );
 
-  // const submitResult = trpc.wordTrainer.submitResult.useMutation();
+  const submitResult = useMutation(
+    trpc.wordTrainer.submitResult.mutationOptions({})
+  );
 
   const startNewRound = useCallback(async () => {
     try {
@@ -62,6 +65,7 @@ export function WordTrainer() {
         setGuessTime(null);
         setRestartCountdown(null);
         setIsShorterWordGuessed(false);
+        setShowLengthWarning(false);
 
         // Focus input after state updates
         setTimeout(() => {
@@ -75,26 +79,90 @@ export function WordTrainer() {
 
   const handleGuessChange = (value: string) => {
     setGuess(value);
+    // Clear length warning when user starts typing again
+    if (showLengthWarning) {
+      setShowLengthWarning(false);
+    }
   };
 
-  const handleSubmitGuess = () => {
-    if (!currentGame || !startTime || !guess.trim()) return;
+  const handleSubmitGuess = async () => {
+    if (!currentGame || !startTime || !guess.trim() || submitResult.isPending)
+      return;
 
     const upperGuess = guess.toUpperCase();
+    
+    // Check minimum length requirement
+    if (upperGuess.length < 5) {
+      setShowLengthWarning(true);
+      // Clear the warning after 3 seconds
+      setTimeout(() => setShowLengthWarning(false), 3000);
+      return;
+    }
+    
+    // Clear any existing warning
+    setShowLengthWarning(false);
+    
+    const currentTime = Date.now();
+    const secondsTaken = (currentTime - startTime) / 1000;
 
-    // Check if guess matches the primary word
-    if (currentGame.primaryWords.includes(upperGuess)) {
-      const endTime = Date.now();
-      const timeUsed = endTime - startTime;
-      setGuessTime(timeUsed);
-      setIsShorterWordGuessed(false);
-      setIsCountdownActive(false);
-      setShowWord(true);
-    } else if (currentGame.correctWords.includes(upperGuess)) {
-      // It's a shorter correct word
-      setIsShorterWordGuessed(true);
-    } else {
-      // Reset the shorter word flag if guess is incorrect
+    try {
+      // Check if guess matches the primary word (target)
+      if (currentGame.primaryWords.includes(upperGuess)) {
+        // Target word was guessed - success!
+        setGuessTime(currentTime - startTime);
+        setIsShorterWordGuessed(false);
+        setIsCountdownActive(false);
+        setGuess("");
+
+        // Submit successful result
+        await submitResult.mutateAsync({
+          index: currentGame.index,
+          targetAnagrams: currentGame.primaryWords,
+          submittedWord: upperGuess,
+          timeTaken: secondsTaken,
+          isFailed: false,
+        });
+
+        setShowWord(true);
+      } else if (currentGame.correctWords.includes(upperGuess)) {
+        // It's a shorter correct word
+        setIsShorterWordGuessed(true);
+        setGuess("");
+
+        // Submit partial success (shorter word guessed)
+        await submitResult.mutateAsync({
+          index: currentGame.index,
+          targetAnagrams: currentGame.primaryWords,
+          submittedWord: upperGuess,
+          timeTaken: secondsTaken,
+          isFailed: false,
+        });
+
+        // Continue game - don't show word yet, refocus input
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 0);
+      } else {
+        // Incorrect guess - go to failure screen
+        setIsShorterWordGuessed(false);
+        setIsCountdownActive(false);
+        setGuess("");
+
+        // Submit failed result
+        await submitResult.mutateAsync({
+          index: currentGame.index,
+          targetAnagrams: currentGame.primaryWords,
+          submittedWord: upperGuess,
+          timeTaken: secondsTaken,
+          isFailed: true,
+        });
+
+        setShowWord(true);
+      }
+    } catch (error) {
+      console.error("Failed to submit result:", error);
+      // Reset state on error
+      setGuess("");
       setIsShorterWordGuessed(false);
     }
   };
@@ -104,13 +172,35 @@ export function WordTrainer() {
     let timer: number;
     if (isCountdownActive && countdown > 0) {
       timer = window.setTimeout(() => setCountdown(countdown - 1), 1000);
-    } else if (countdown === 0 && isCountdownActive) {
-      setIsCountdownActive(false);
-      setIsShorterWordGuessed(false);
-      setShowWord(true);
+    } else if (
+      countdown === 0 &&
+      isCountdownActive &&
+      currentGame &&
+      startTime
+    ) {
+      // Time expired - submit failure
+      const handleTimeExpiration = async () => {
+        setIsCountdownActive(false);
+        setIsShorterWordGuessed(false);
+
+        const secondsTaken = (Date.now() - startTime) / 1000;
+
+        // Submit failed result with empty string
+        await submitResult.mutateAsync({
+          index: currentGame.index,
+          targetAnagrams: currentGame.primaryWords,
+          submittedWord: "",
+          timeTaken: secondsTaken,
+          isFailed: true,
+        });
+
+        setShowWord(true);
+      };
+
+      handleTimeExpiration();
     }
     return () => clearTimeout(timer);
-  }, [countdown, isCountdownActive, currentGame, startTime]);
+  }, [countdown, isCountdownActive, currentGame, startTime, submitResult]);
 
   // Global keydown handler for Enter key
   useEffect(() => {
@@ -118,7 +208,7 @@ export function WordTrainer() {
       if (e.key === "Enter") {
         if (showWord) {
           startNewRound();
-        } else if (isCountdownActive) {
+        } else if (isCountdownActive && !submitResult.isPending) {
           handleSubmitGuess();
         }
       }
@@ -126,7 +216,7 @@ export function WordTrainer() {
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [showWord, guess]);
+  }, [showWord, guess, isCountdownActive, submitResult.isPending]);
 
   // Start first round on mount
   useEffect(() => {
@@ -175,6 +265,14 @@ export function WordTrainer() {
             >
               Correct! But there's a longer word you can find!
             </p>
+            <p
+              className={cn(
+                "text-red-500 mt-1 font-medium",
+                !showLengthWarning && "invisible"
+              )}
+            >
+              You can do better than that!
+            </p>
           </div>
 
           <FlashCard
@@ -190,11 +288,11 @@ export function WordTrainer() {
             <div className="mt-4 text-center">
               <button
                 onClick={handleSubmitGuess}
-                disabled={!guess.trim()}
+                disabled={!guess.trim() || submitResult.isPending}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Send size={20} />
-                Submit Guess
+                {submitResult.isPending ? "Submitting..." : "Submit Guess"}
               </button>
             </div>
           )}

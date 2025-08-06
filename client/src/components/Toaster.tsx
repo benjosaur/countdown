@@ -14,7 +14,7 @@ export function Toaster() {
         success: {
           duration: 3000,
           style: {
-            background: "var(--background)",
+            background: "#ffffff",
             border: "1px solid var(--success)",
           },
         },

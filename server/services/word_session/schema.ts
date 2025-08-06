@@ -1,6 +1,7 @@
 import z from "zod";
 import { dbEntrySchema } from "../schema";
 import type { BaselineWordEntry } from "../../const/baseline_gen";
+import { extend } from "zod/mini";
 
 export const dbWordTrainerWordSchema = dbEntrySchema.extend({
   // pK - USER#{user.sub}
@@ -48,12 +49,23 @@ export type DbWordTrainerMetaQuery = z.infer<
   typeof dbWordTrainerMetaQuerySchema
 >;
 
-export interface DbUpdateWordTrainerAttempt {
+export interface DbUpdateWordTrainerFailAttempt {
   submittedBaselineWordEntry: BaselineWordEntry;
-  chosenAnagram?: string;
-  timeTaken?: number;
+  category: "fail";
+}
+
+export interface DbUpdateWordTrainerSuccessAttempt
+  extends Omit<DbUpdateWordTrainerFailAttempt, "category"> {
+  submittedBaselineWordEntry: BaselineWordEntry;
+  chosenAnagram: string;
+  timeTaken: number;
   category: keyof Omit<
     DbWordTrainerWord,
-    "pK" | "sK" | "averageSuccessTime" | "deltaLikelihood" | "anagramCounters"
+    | "pK"
+    | "sK"
+    | "averageSuccessTime"
+    | "deltaLikelihood"
+    | "anagramCounters"
+    | "fail"
   >;
 }

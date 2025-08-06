@@ -13,7 +13,7 @@ export const queryClient = new QueryClient({
     },
     mutations: {
       onSuccess: () => {
-        toast.success("Operation completed successfully");
+        toast.success("Records updated");
       },
       onError: (error) => {
         toast.error(

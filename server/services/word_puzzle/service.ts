@@ -74,9 +74,9 @@ export class WordPuzzleService {
     const correctWords = [...targetWord.anagrams];
 
     for (const word of filteredWordPool) {
-      if (word.anagrams[0]!.length < 6) continue; // Skip words that are too short
+      if (word.anagrams[0]!.length < 5) continue; // Skip words that are too short. There are no words shorter than 5 letters in the top 1000.
       if (targetWord.anagrams[0]! == word.anagrams[0]!) continue;
-      if (word.length >= targetWord.length) continue;
+      // if (word.length >= targetWord.length) continue; // This condition should not be met as fillRemainingLetters ensures we only fill with shorter words. In rare case it does then fine.
       if (
         !this.doLettersContainWordLetters(
           gameLetters.join(""),

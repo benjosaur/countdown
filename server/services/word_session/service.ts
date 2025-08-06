@@ -6,7 +6,8 @@ import {
   dbWordTrainerWordSchema,
   type DbMetaWordTrainer,
   type DbMetaWordTrainerBucket,
-  type DbUpdateWordTrainerAttempt,
+  type DbUpdateWordTrainerSuccessAttempt,
+  type DbUpdateWordTrainerFailAttempt,
   type DbWordTrainerWord,
 } from "./schema";
 import type {
@@ -152,8 +153,10 @@ export class WordSessionService {
     }
 
     if (isSubmittedWordTarget) {
-      const update: DbUpdateWordTrainerAttempt = {
+      const update: DbUpdateWordTrainerSuccessAttempt = {
         submittedBaselineWordEntry: targetWordBaselineDictEntry,
+        chosenAnagram: submittedWord,
+        timeTaken: submission.timeTaken,
         category: this.getSuccessfulTimeCategory({
           time: submission.timeTaken,
           isSuccessDirect: true,
@@ -187,7 +190,7 @@ export class WordSessionService {
     }
 
     if (submission.isFailed) {
-      const update: DbUpdateWordTrainerAttempt = {
+      const update: DbUpdateWordTrainerFailAttempt = {
         submittedBaselineWordEntry: targetWordBaselineDictEntry,
         category: "fail",
       };
@@ -225,8 +228,9 @@ export class WordSessionService {
       (entry) => entry.words.includes(submittedWord)
     );
     if (matchedTop1000WordEntryToSubmitted) {
-      const update: DbUpdateWordTrainerAttempt = {
+      const update: DbUpdateWordTrainerSuccessAttempt = {
         submittedBaselineWordEntry: matchedTop1000WordEntryToSubmitted,
+        timeTaken: submission.timeTaken,
         chosenAnagram: submittedWord,
         category: this.getSuccessfulTimeCategory({
           time: submission.timeTaken,
@@ -284,8 +288,8 @@ export class WordSessionService {
         },
       };
     }
-    // must still be incorrect despite not being explicitly flagged by FE.
-    const update: DbUpdateWordTrainerAttempt = {
+    // must still be incorrect despite not being explicitly flagged by FE. Should actually throw error here as FE should catch all errors.
+    const update: DbUpdateWordTrainerFailAttempt = {
       submittedBaselineWordEntry: targetWordBaselineDictEntry,
       category: "fail",
     };
