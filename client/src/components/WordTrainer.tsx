@@ -507,7 +507,7 @@ export function WordTrainer() {
           )}
 
           {showWord && (
-            <div className="mt-8 p-6 bg-white rounded-lg shadow-md text-center">
+            <div className="mt-4 p-6 bg-white rounded-lg shadow-md text-center">
               <div className="flex items-center justify-center gap-2 mb-4">
                 <Trophy className="text-yellow-500" size={24} />
                 <h2 className="text-2xl font-bold text-blue-900">
@@ -533,6 +533,107 @@ export function WordTrainer() {
                   <h3 className="text-xl font-semibold text-blue-900 border-b pb-2">
                     Session Statistics
                   </h3>
+                  {/* Submission */}
+                  {sessionSubmissions.length > 0 && (
+                    <div className="space-y-3">
+                      {sessionSubmissions
+                        .slice()
+                        .reverse()
+                        .map((submission, reverseIndex) => {
+                          const index =
+                            sessionSubmissions.length - 1 - reverseIndex;
+                          return (
+                            <div
+                              key={index}
+                              className="bg-gray-50 p-3 rounded border-l-4 border-blue-400"
+                            >
+                              <p className="font-medium text-gray-900">
+                                {sessionAttempts[index]?.isTarget ? "⭐ " : ""}
+                                Submission {index + 1}:{" "}
+                                {sessionAttempts[index]?.word || "(timeout)"}
+                                {sessionAttempts[index]?.isTarget ? " ⭐" : ""}
+                              </p>
+                              {submission.targetWord.oldLikelihood !==
+                                undefined && (
+                                <p className="text-sm text-gray-600">
+                                  Target Word Likelihood:{" "}
+                                  {submission.targetWord.oldLikelihood.toFixed(
+                                    1
+                                  )}
+                                  <span className="ml-2">
+                                    {renderDelta(
+                                      submission.targetWord
+                                        .changeInLikelihood || 0
+                                    )}
+                                  </span>
+                                </p>
+                              )}
+                              {submission.targetWord.oldAverageSuccessTime !==
+                                undefined && (
+                                <p className="text-sm text-gray-600">
+                                  Target Word Avg Success Time:{" "}
+                                  {submission.targetWord.oldAverageSuccessTime.toFixed(
+                                    2
+                                  )}
+                                  s
+                                  <span className="ml-2">
+                                    {renderDelta(
+                                      submission.targetWord
+                                        .changeInAverageSuccessTime || 0,
+                                      true,
+                                      2,
+                                      submission.targetWord
+                                        .oldAverageSuccessTime
+                                    )}
+                                  </span>
+                                </p>
+                              )}
+                              {submission.submittedWord &&
+                                submission.submittedWord.oldLikelihood !==
+                                  undefined && (
+                                  <p className="text-sm text-gray-600">
+                                    Submitted Word (
+                                    {submission.submittedWord.wordData.anagrams.join(
+                                      ", "
+                                    )}
+                                    ) Likelihood:{" "}
+                                    {submission.submittedWord.oldLikelihood.toFixed(
+                                      1
+                                    )}
+                                    <span className="ml-2">
+                                      {renderDelta(
+                                        submission.submittedWord
+                                          .changeInLikelihood || 0
+                                      )}
+                                    </span>
+                                  </p>
+                                )}
+                              {submission.submittedWord &&
+                                submission.submittedWord
+                                  .oldAverageSuccessTime !== undefined && (
+                                  <p className="text-sm text-gray-600">
+                                    Submitted Word Avg Success Time:{" "}
+                                    {submission.submittedWord.oldAverageSuccessTime.toFixed(
+                                      2
+                                    )}
+                                    s
+                                    <span className="ml-2">
+                                      {renderDelta(
+                                        submission.submittedWord
+                                          .changeInAverageSuccessTime || 0,
+                                        true,
+                                        2,
+                                        submission.submittedWord
+                                          .oldAverageSuccessTime
+                                      )}
+                                    </span>
+                                  </p>
+                                )}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
 
                   {/* Overall Statistics */}
                   <div className="bg-blue-50 p-4 rounded-lg">
@@ -583,210 +684,6 @@ export function WordTrainer() {
                       );
                     })()}
                   </div>
-
-                  {/* Word-specific Statistics */}
-                  {(() => {
-                    const { wordDeltas, submittedWordDeltas } =
-                      calculateAccumulatedDeltas();
-                    const allWordDeltas = [
-                      ...wordDeltas,
-                      ...submittedWordDeltas,
-                    ];
-                    const uniqueWordDeltas = allWordDeltas.reduce(
-                      (acc, word) => {
-                        const existing = acc.find(
-                          (w) => w.wordData.index === word.wordData.index
-                        );
-                        if (!existing) {
-                          acc.push(word);
-                        } else {
-                          // Combine deltas for same word
-                          existing.totalLikelihoodDelta +=
-                            word.totalLikelihoodDelta;
-                          existing.totalAverageSuccessTimeDelta +=
-                            word.totalAverageSuccessTimeDelta;
-                        }
-                        return acc;
-                      },
-                      [] as typeof allWordDeltas
-                    );
-
-                    return (
-                      uniqueWordDeltas.length > 0 && (
-                        <div className="space-y-3">
-                          <h4 className="font-semibold text-blue-800">
-                            Word Performance Changes
-                          </h4>
-                          {uniqueWordDeltas.map((word, index) => (
-                            <div
-                              key={word.wordData.index}
-                              className="bg-gray-50 p-3 rounded border-l-4 border-blue-400"
-                            >
-                              <p className="font-medium text-gray-900">
-                                {word.wordData.anagrams.join(", ")} (Length:{" "}
-                                {word.wordData.length})
-                              </p>
-                              {word.oldLikelihood !== undefined && (
-                                <p className="text-sm text-gray-600">
-                                  Prev Likelihood:{" "}
-                                  {word.oldLikelihood.toFixed(1)}
-                                  <span className="ml-2">
-                                    Change:{" "}
-                                    {renderDelta(word.totalLikelihoodDelta)}
-                                  </span>
-                                </p>
-                              )}
-                              {word.oldAverageSuccessTime !== undefined && (
-                                <p className="text-sm text-gray-600">
-                                  Prev Avg Success Time:{" "}
-                                  {word.oldAverageSuccessTime.toFixed(2)}s
-                                  <span className="ml-2">
-                                    Change:{" "}
-                                    {renderDelta(
-                                      word.totalAverageSuccessTimeDelta,
-                                      true,
-                                      2,
-                                      word.oldAverageSuccessTime
-                                    )}
-                                  </span>
-                                </p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    );
-                  })()}
-
-                  {/* Individual Submissions */}
-                  {sessionSubmissions.length > 1 && (
-                    <div className="space-y-3">
-                      <h4 className="font-semibold text-blue-800">
-                        Individual Submission Deltas
-                      </h4>
-                      {sessionSubmissions.map((submission, index) => (
-                        <div
-                          key={index}
-                          className="bg-yellow-50 p-3 rounded border-l-4 border-yellow-400"
-                        >
-                          <p className="font-medium text-gray-900">
-                            Submission {index + 1}:{" "}
-                            {sessionAttempts[index]?.word || "(timeout)"}
-                          </p>
-                          <div className="text-sm text-gray-600 space-y-1">
-                            {submission.targetWord.oldLikelihood !==
-                              undefined && (
-                              <p>
-                                Target Word (
-                                {submission.targetWord.wordData.anagrams.join(
-                                  ", "
-                                )}
-                                ) Likelihood:{" "}
-                                <span className="text-gray-500">
-                                  Prev:{" "}
-                                  {submission.targetWord.oldLikelihood.toFixed(
-                                    1
-                                  )}
-                                </span>
-                                {submission.targetWord.changeInLikelihood !==
-                                  undefined && (
-                                  <>
-                                    {" → "}
-                                    {renderDelta(
-                                      submission.targetWord.changeInLikelihood
-                                    )}
-                                  </>
-                                )}
-                              </p>
-                            )}
-                            {submission.targetWord.oldAverageSuccessTime !==
-                              undefined && (
-                              <p>
-                                Target Word Avg Time:{" "}
-                                <span className="text-gray-500">
-                                  Prev:{" "}
-                                  {submission.targetWord.oldAverageSuccessTime.toFixed(
-                                    2
-                                  )}
-                                  s
-                                </span>
-                                {submission.targetWord
-                                  .changeInAverageSuccessTime !== undefined && (
-                                  <>
-                                    {" → "}
-                                    {renderDelta(
-                                      submission.targetWord
-                                        .changeInAverageSuccessTime,
-                                      true,
-                                      2,
-                                      submission.targetWord
-                                        .oldAverageSuccessTime
-                                    )}
-                                  </>
-                                )}
-                              </p>
-                            )}
-                            {submission.submittedWord &&
-                              submission.submittedWord.oldLikelihood !==
-                                undefined && (
-                                <p>
-                                  Submitted Word (
-                                  {submission.submittedWord.wordData.anagrams.join(
-                                    ", "
-                                  )}
-                                  ) Likelihood:{" "}
-                                  <span className="text-gray-500">
-                                    Prev:{" "}
-                                    {submission.submittedWord.oldLikelihood.toFixed(
-                                      1
-                                    )}
-                                  </span>
-                                  {submission.submittedWord
-                                    .changeInLikelihood !== undefined && (
-                                    <>
-                                      {" → "}
-                                      {renderDelta(
-                                        submission.submittedWord
-                                          .changeInLikelihood
-                                      )}
-                                    </>
-                                  )}
-                                </p>
-                              )}
-                            {submission.submittedWord &&
-                              submission.submittedWord.oldAverageSuccessTime !==
-                                undefined && (
-                                <p>
-                                  Submitted Word Avg Time:{" "}
-                                  <span className="text-gray-500">
-                                    Prev:{" "}
-                                    {submission.submittedWord.oldAverageSuccessTime.toFixed(
-                                      2
-                                    )}
-                                    s
-                                  </span>
-                                  {submission.submittedWord
-                                    .changeInAverageSuccessTime !==
-                                    undefined && (
-                                    <>
-                                      {" → "}
-                                      {renderDelta(
-                                        submission.submittedWord
-                                          .changeInAverageSuccessTime,
-                                        true,
-                                        2,
-                                        submission.submittedWord
-                                          .oldAverageSuccessTime
-                                      )}
-                                    </>
-                                  )}
-                                </p>
-                              )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               )}
 
