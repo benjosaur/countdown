@@ -40,7 +40,7 @@ describe("WordSessionService", () => {
       isFailed: false,
       submittedWord: "MAIDENS",
       targetAnagrams: ["MAIDENS", "MEDIANS", "MEDINAS", "SIDEMAN"],
-      timeTaken: 11.8,
+      timeTaken: 8.8,
     };
 
     try {

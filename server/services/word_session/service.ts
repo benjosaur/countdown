@@ -264,10 +264,12 @@ export class WordSessionService {
           wordData: convertBaselineEntryToWordData(targetWordBaselineDictEntry),
         },
         submittedWord: {
-          wordData: convertBaselineEntryToWordData(targetWordBaselineDictEntry),
+          wordData: convertBaselineEntryToWordData(
+            matchedTop1000WordEntryToSubmitted
+          ),
           oldLikelihood:
             oldWordDbEntry.deltaLikelihood +
-            targetWordBaselineDictEntry.likelihood,
+            matchedTop1000WordEntryToSubmitted.likelihood,
           changeInLikelihood: changeInWordDeltaLikelihood,
           oldAverageSuccessTime: oldWordDbEntry.averageSuccessTime,
           changeInAverageSuccessTime: changeInWordAverageSuccessTime,

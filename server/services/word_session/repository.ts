@@ -273,6 +273,7 @@ export class WordSessionRepository {
       pK: overallPk,
       sK: overallSk,
       averageSuccessTime: averageOverallSuccessTime,
+      deltaLikelihood,
       ...oldOverallCounts
     } = oldWordTrainerMetadata;
 
