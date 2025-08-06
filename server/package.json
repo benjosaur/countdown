@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "bun --watch index.ts",
     "build": "tsc -p tsconfig.build.json",
-    "deploy": "sed -i '\\/\\/\\/ ESBUILD_DEPLOY_STOP/a/*' index.ts && esbuild index.ts --bundle --platform=node --target=node20 --outfile=dist/index.js --external:@aws-sdk/* --tsconfig=tsconfig.build.json --define:process.env.NODE_ENV='\"production\"' && sed -i '/\\/\\*/d' index.ts  && cd ../infra && cdk deploy --hotswap",
+    "deploy": "sed -i '\\/\\/\\/ ESBUILD_DEPLOY_STOP/a/*' index.ts && esbuild index.ts --bundle --platform=node --target=node20 --outfile=dist/index.js --external:@aws-sdk/* --tsconfig=tsconfig.build.json --define:process.env.NODE_ENV='\"production\"' && sed -i '/\\/\\*/d' index.ts && cd ../infra && cdk deploy",
+    "deploy:hotswap": "sed -i '\\/\\/\\/ ESBUILD_DEPLOY_STOP/a/*' index.ts && esbuild index.ts --bundle --platform=node --target=node20 --outfile=dist/index.js --external:@aws-sdk/* --tsconfig=tsconfig.build.json --define:process.env.NODE_ENV='\"production\"' && sed -i '/\\/\\*/d' index.ts && cd ../infra && cdk deploy --hotswap",
     "start": "bun run index.js"
   },
   "dependencies": {
