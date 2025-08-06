@@ -13,6 +13,7 @@ export const wordTrainerRouter = router({
         ctx.user,
         input
       );
+      return response;
     }),
 });
 

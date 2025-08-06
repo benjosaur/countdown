@@ -250,11 +250,13 @@ export class WordSessionRepository {
 
     if (!isFailure) {
       const { fail, ...oldSuccessCounts } = oldCounts;
-
+      const rawAttempts = Object.values(oldSuccessCounts).reduce(
+        (sum, count) => sum + count,
+        0
+      );
       const newAverageTime =
-        Object.values(oldSuccessCounts).reduce((sum, count) => sum + count, 0) *
-          averageSuccessTime +
-        update.timeTaken;
+        (rawAttempts * averageSuccessTime + update.timeTaken) /
+        (rawAttempts + 1);
       changeInWordAverageSuccessTime = newAverageTime - averageSuccessTime;
     }
     return {
@@ -281,13 +283,14 @@ export class WordSessionRepository {
     const isFailure = update.category === "fail";
 
     if (!isFailure) {
+      const rawOverallAttempts = Object.values(oldOverallSuccessCounts).reduce(
+        (sum, count) => sum + count,
+        0
+      );
       const newOverallAverageTime =
-        Object.values(oldOverallSuccessCounts).reduce(
-          (sum, count) => sum + count,
-          0
-        ) *
-          averageOverallSuccessTime +
-        update.timeTaken;
+        (rawOverallAttempts * averageOverallSuccessTime + update.timeTaken) /
+        (rawOverallAttempts + 1);
+      averageOverallSuccessTime + update.timeTaken;
       changeInOverallAverageSuccessTime =
         newOverallAverageTime - averageOverallSuccessTime;
     }

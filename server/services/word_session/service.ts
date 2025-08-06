@@ -181,7 +181,9 @@ export class WordSessionService {
         },
         targetWord: {
           wordData: convertBaselineEntryToWordData(targetWordBaselineDictEntry),
-          oldLikelihood: oldWordDbEntry.deltaLikelihood,
+          oldLikelihood:
+            oldWordDbEntry.deltaLikelihood +
+            targetWordBaselineDictEntry.likelihood,
           changeInLikelihood: changeInWordDeltaLikelihood,
           oldAverageSuccessTime: oldWordDbEntry.averageSuccessTime,
           changeInAverageSuccessTime: changeInWordAverageSuccessTime,
@@ -216,7 +218,9 @@ export class WordSessionService {
         },
         targetWord: {
           wordData: convertBaselineEntryToWordData(targetWordBaselineDictEntry),
-          oldLikelihood: oldWordDbEntry.deltaLikelihood,
+          oldLikelihood:
+            oldWordDbEntry.deltaLikelihood +
+            targetWordBaselineDictEntry.likelihood,
           changeInLikelihood: changeInWordDeltaLikelihood,
           oldAverageSuccessTime: oldWordDbEntry.averageSuccessTime,
           changeInAverageSuccessTime: changeInWordAverageSuccessTime,
@@ -261,7 +265,9 @@ export class WordSessionService {
         },
         submittedWord: {
           wordData: convertBaselineEntryToWordData(targetWordBaselineDictEntry),
-          oldLikelihood: oldWordDbEntry.deltaLikelihood,
+          oldLikelihood:
+            oldWordDbEntry.deltaLikelihood +
+            targetWordBaselineDictEntry.likelihood,
           changeInLikelihood: changeInWordDeltaLikelihood,
           oldAverageSuccessTime: oldWordDbEntry.averageSuccessTime,
           changeInAverageSuccessTime: changeInWordAverageSuccessTime,
