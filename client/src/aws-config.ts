@@ -1,4 +1,4 @@
-import { ResourcesConfig } from "aws-amplify";
+import type { ResourcesConfig } from "aws-amplify";
 
 const amplifyConfig: ResourcesConfig = {
   Auth: {
@@ -9,7 +9,7 @@ const amplifyConfig: ResourcesConfig = {
         oauth: {
           domain: import.meta.env.VITE_COGNITO_USER_POOL_CLIENT_URL,
           scopes: ["email", "openid", "profile"],
-          redirectSignIn: [`${window.location.origin}/`],
+          redirectSignIn: [`${window.location.origin}/dashboard`],
           redirectSignOut: [`${window.location.origin}/`],
           responseType: "code",
           providers: ["Google"],

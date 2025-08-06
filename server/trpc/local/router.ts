@@ -1,12 +1,12 @@
 import { wordPuzzleSubmissionSchema } from "shared";
-import { localRouter, publicProcedure } from "./trpc.ts";
+import { localRouter, protectedProcedure } from "./trpc.ts";
 
 export const wordTrainerRouter = localRouter({
-  getNewGame: publicProcedure.query(async ({ ctx }) => {
+  getNewGame: protectedProcedure.query(async ({ ctx }) => {
     const game = await ctx.services.wordSessionService.getPuzzle(ctx.user);
     return game;
   }),
-  submitResult: publicProcedure
+  submitResult: protectedProcedure
     .input(wordPuzzleSubmissionSchema)
     .mutation(async ({ ctx, input }) => {
       const response = await ctx.services.wordSessionService.updateSubmission(

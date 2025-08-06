@@ -1,29 +1,35 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Trophy, Clock, Send } from "lucide-react";
 import { FlashCard } from "./FlashCard";
 import { trpc } from "../utils/trpc";
 import type { WordPuzzle } from "shared";
 import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/utils/cn";
+import { getCurrentUser } from "aws-amplify/auth";
 
 export function WordTrainer() {
-  // Input: Primary Words (Target + Anagrams). Secondary Words (Valid for scramble but < len(target)). Letters
-  // If formSubmit
-  // Submit to checker -> while loading should also freeze timer.
-  // First submission is checked via FE
-  // Is in primary words?
-  // If yes go to submission endpoint. Submit Data: 1. WordId/Rank 2. Submitted Word 3. As Primary or Secondary? 4. Record (Time or Fail)
-  // Is in correct words? (i.e. shorter but valid)
-  // If yes go to submission endpoint.
-  // Continue and set helper message that longer out there.
-  // Can be formed from letters?
-  // Then go to word checker endpoint.
-  //
-  //
-  //
-  // Else If 20s Timer Run out (w/ 1s freezes for every input onChange)
-  // Submission endpoint 1. WordId/Rank 2. As Primary 3. Fail
+  const navigate = useNavigate();
+
+  // Check authentication on component mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        // Check for mock user first (local development)
+        const mockUserData = localStorage.getItem("mockUser");
+        if (mockUserData) {
+          return; // User is authenticated via mock
+        }
+
+        // Check for real authentication
+        await getCurrentUser();
+      } catch (error) {
+        // User not authenticated, redirect to login
+        navigate("/login");
+      }
+    };
+    checkAuth();
+  }, [navigate]);
 
   const [currentGame, setCurrentGame] = useState<WordPuzzle | null>(null);
   const [countdown, setCountdown] = useState(30);
@@ -140,7 +146,7 @@ export function WordTrainer() {
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-between mb-8">
           <Link
-            to="/"
+            to="/dashboard"
             className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors"
           >
             <ArrowLeft size={20} />

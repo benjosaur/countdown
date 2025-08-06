@@ -21,7 +21,7 @@ export function HomePage() {
 
           <div className="mb-16">
             <Link 
-              to="/trainer"
+              to="/login"
               className="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 text-white font-semibold text-xl hover:bg-blue-700 transition-colors border border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
             >
               Start Training
