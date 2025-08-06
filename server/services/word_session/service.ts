@@ -415,21 +415,25 @@ export class WordSessionService {
     const overallWordEntriesInBucket = baseline.wordEntries
       .filter((wordEntry) => wordEntry.bucketIndex === bucketIndex)
       .map((baselineEntry) => {
-        const matchedUserWordEntry = userWordDeltaLikelihoodsInBucket.find(
-          (userEntry) =>
-            parseInt(userEntry.sK.split("#").pop()!) === baselineEntry.index
-        ) ?? {
+        const matchedUserWordEntry =
+          userWordDeltaLikelihoodsInBucket.find(
+            (userEntry) =>
+              parseInt(userEntry.sK.split("#").pop()!) === baselineEntry.index
+          ) ?? {};
+        const matchedUserWordEntryWithIndex = {
+          ...matchedUserWordEntry,
           wordIndex: baselineEntry.index,
         };
 
-        let parsedUserWordEntry;
+        let parsedUserWordEntry; // if doesnt exist then parsing will fill in blanks.
         try {
           parsedUserWordEntry = dbWordTrainerWordSchema
             .omit({ pK: true, sK: true })
             .extend({ wordIndex: z.number() })
-            .parse(matchedUserWordEntry);
+            .parse(matchedUserWordEntryWithIndex);
         } catch (error) {
-          console.error("Error parsing user word entry", error);
+          console.error("Error parsing user word entry", error); // this is being thrown sometimes with wordIndex undefined.
+          console.log(matchedUserWordEntryWithIndex, baselineEntry);
           throw error;
         }
 
@@ -470,7 +474,12 @@ export class WordSessionService {
     isSuccessDirect: boolean;
   }): keyof Omit<
     DbWordTrainerWord,
-    "pK" | "sK" | "averageSuccessTime" | "deltaLikelihood" | "anagramCounters"
+    | "pK"
+    | "sK"
+    | "averageSuccessTime"
+    | "deltaLikelihood"
+    | "anagramCounters"
+    | "fail"
   > {
     if (isSuccessDirect && time < 10) {
       return "successDirectUnder10";
