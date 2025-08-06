@@ -1,5 +1,7 @@
 import z from "zod";
 
+// NB WORDINDEX IS NOT ZERO INDEXED. IT IS 1 INDEXED. BUCKETS ARE ZERO INDEXED.
+
 export const wordPuzzleSubmissionSchema = z.object({
   index: z.number(),
   targetAnagrams: z.array(z.string()),
@@ -18,6 +20,31 @@ export interface WordPuzzle {
   primaryWords: string[];
   correctWords: string[];
   index: number;
+}
+
+export interface WordMetadata {
+  successDirectUnder10: number;
+  successDirectBetween10And20: number;
+  fail: number;
+  successIndirectUnder10: number;
+  successIndirectBetween10And20: number;
+  averageSuccessTime: number;
+  anagramCounters: Record<string, number>;
+}
+
+export interface OverallMetadata {
+  successDirectUnder10: number;
+  successDirectBetween10And20: number;
+  fail: number;
+  averageSuccessTime: number;
+}
+
+export interface GetPuzzleResult {
+  puzzle: WordPuzzle;
+  metadata: {
+    word: WordMetadata;
+    overall: OverallMetadata;
+  };
 }
 
 export interface WordPuzzleSubmission {

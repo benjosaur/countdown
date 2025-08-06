@@ -12,7 +12,12 @@ import {
 } from "lucide-react";
 import { FlashCard } from "./FlashCard";
 import { trpc } from "../utils/trpc";
-import type { WordPuzzle, WordPuzzleSubmissionResponse } from "shared";
+import type {
+  WordPuzzle,
+  WordPuzzleSubmissionResponse,
+  WordMetadata,
+  GetPuzzleResult,
+} from "shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { cn } from "@/utils/cn";
 import { getCurrentUser } from "aws-amplify/auth";
@@ -41,6 +46,9 @@ export function WordTrainer() {
   }, [navigate]);
 
   const [currentGame, setCurrentGame] = useState<WordPuzzle | null>(null);
+  const [currentMetadata, setCurrentMetadata] = useState<WordMetadata | null>(
+    null
+  );
   const [countdown, setCountdown] = useState(30);
   const [isCountdownActive, setIsCountdownActive] = useState(false);
   const [showWord, setShowWord] = useState(false);
@@ -75,6 +83,7 @@ export function WordTrainer() {
       console.log(result.data);
       if (result.data) {
         setCurrentGame(result.data.puzzle);
+        setCurrentMetadata(result.data.metadata.word);
         setCountdown(20);
         setIsCountdownActive(true);
         setShowWord(false);
@@ -263,6 +272,35 @@ export function WordTrainer() {
     }
     return () => clearTimeout(timer);
   }, [countdown, isCountdownActive, currentGame, startTime, submitResult]);
+
+  // Helper function to get the primary word with highest counter
+  const getPrimaryWordByImportance = (
+    primaryWords: string[],
+    anagramCounters: Record<string, number>
+  ) => {
+    if (!primaryWords.length) return [];
+
+    // Find the primary word with the highest counter
+    let maxCount = -1;
+    let primaryWord: string | null = null;
+
+    for (const word of primaryWords) {
+      const count = anagramCounters[word] || 0;
+      if (count > maxCount) {
+        maxCount = count;
+        primaryWord = word;
+      }
+    }
+
+    // If there's no clear winner (all equal or no entries), return the first word as primary
+    if (primaryWord === null || maxCount === 0) {
+      return [primaryWords[0]!, ...primaryWords.slice(1)];
+    }
+
+    // Return array with the highest counter word first, followed by the rest
+    const otherWords = primaryWords.filter((word) => word !== primaryWord);
+    return [primaryWord, ...otherWords];
+  };
 
   // Helper function to calculate accumulated deltas
   const calculateAccumulatedDeltas = () => {
@@ -517,9 +555,29 @@ export function WordTrainer() {
 
               <p className="text-lg mb-4">
                 The word(s) was:{" "}
-                <span className="font-bold text-blue-800">
-                  {currentGame.primaryWords.join(", ")}
-                </span>
+                {(() => {
+                  if (!currentMetadata) {
+                    return (
+                      <span className="font-bold text-blue-800">
+                        {currentGame.primaryWords.join(", ")}
+                      </span>
+                    );
+                  }
+
+                  const orderedWords = getPrimaryWordByImportance(
+                    currentGame.primaryWords,
+                    currentMetadata.anagramCounters
+                  );
+
+                  return (
+                    <span className="text-blue-800">
+                      <span className="font-bold">{orderedWords[0]}</span>
+                      {orderedWords.length > 1 && (
+                        <span>, {orderedWords.slice(1).join(", ")}</span>
+                      )}
+                    </span>
+                  );
+                })()}
               </p>
 
               {guessTime && (
@@ -548,10 +606,10 @@ export function WordTrainer() {
                               className="bg-gray-50 p-3 rounded border-l-4 border-blue-400"
                             >
                               <p className="font-medium text-gray-900">
-                                {sessionAttempts[index]?.isTarget ? "⭐ " : ""}
+                                {sessionAttempts[index]?.isTarget ? "✨ " : ""}
                                 Submission {index + 1}:{" "}
                                 {sessionAttempts[index]?.word || "(timeout)"}
-                                {sessionAttempts[index]?.isTarget ? " ⭐" : ""}
+                                {sessionAttempts[index]?.isTarget ? " ✨" : ""}
                               </p>
                               {submission.targetWord.oldLikelihood !==
                                 undefined && (

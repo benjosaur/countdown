@@ -40,6 +40,9 @@ export class WordPuzzleService {
      - Letters should also contain at least 3 vowels and 4 consonants as per countdown rules
      - If any fail, retry MAX_RETRIES times. Fall back to Xs otherwise.
     */
+
+    // NB WORDINDEX IS NOT ZERO INDEXED. IT IS 1 INDEXED.
+
     const targetVowels =
       Math.random() < THREE_VOWEL_CHANCE
         ? 3
@@ -47,7 +50,7 @@ export class WordPuzzleService {
         ? 4
         : 5;
 
-    const targetWord = this.words[wordIndex];
+    const targetWord = this.words[wordIndex - 1];
     if (!targetWord) {
       throw new Error("No words available");
     }

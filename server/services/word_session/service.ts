@@ -18,6 +18,7 @@ import type {
 } from "shared";
 import z from "zod";
 import { convertBaselineEntryToWordData } from "../../utils/words";
+import { de } from "zod/locales";
 
 interface OverallMetadata {
   successDirectUnder10: number;
@@ -76,10 +77,12 @@ export class WordSessionService {
     const overallLikelihoodSum = baseline.overallLikelihoodSum;
 
     const sampledLikelihood = Math.floor(Math.random() * overallLikelihoodSum);
-    const chosenBucketIndex = this.findBucketContainingSampledLikelihood(
-      sampledLikelihood,
-      userBucketLikelihoods
-    );
+    // const chosenBucketIndex = this.findBucketContainingSampledLikelihood(
+    //   sampledLikelihood,
+    //   userBucketLikelihoods
+    // );
+
+    const chosenBucketIndex = 4;
 
     const residualSampledLikelihoodWithinBucket =
       sampledLikelihood -
@@ -96,14 +99,18 @@ export class WordSessionService {
         chosenBucketIndex
       );
 
-    const chosenWordIndex = this.findWordEntryContainingSampledLikelihood(
-      residualSampledLikelihoodWithinBucket,
-      userWordLikelihoodsInBucketWithMetadata
-    );
+    // const chosenWordIndex = this.findWordEntryContainingSampledLikelihood(
+    //   residualSampledLikelihoodWithinBucket,
+    //   userWordLikelihoodsInBucketWithMetadata
+    // );
+
+    const chosenWordIndex = 161;
 
     const chosenUserWordEntry = userWordLikelihoodsInBucketWithMetadata.find(
       (entry) => entry.wordIndex === chosenWordIndex
     )!;
+
+    console.log(chosenUserWordEntry);
 
     const puzzle = await this.wordPuzzleService.generatePuzzle(chosenWordIndex);
 
