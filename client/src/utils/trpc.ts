@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createTRPCClient, httpBatchLink } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
+import { fetchAuthSession } from "aws-amplify/auth";
 import toast from "react-hot-toast";
 import type { AppRouter } from "shared";
 // import toast from "react-hot-toast";
@@ -33,17 +34,17 @@ const trpcClient = createTRPCClient<AppRouter>({
         import.meta.env.MODE == "production"
           ? import.meta.env.VITE_API_URL!
           : "http://localhost:3001/trpc",
-      //   headers: async () => {
-      //     try {
-      //       const session = await fetchAuthSession();
-      //       const idToken = session.tokens?.idToken?.toString();
-      //       return {
-      //         authorization: idToken ? `Bearer ${idToken}` : "",
-      //       };
-      //     } catch (error) {
-      //       return {};
-      //     }
-      //   },
+      headers: async () => {
+        try {
+          const session = await fetchAuthSession();
+          const accessToken = session.tokens?.accessToken?.toString();
+          return {
+            authorization: accessToken ? `Bearer ${accessToken}` : "",
+          };
+        } catch (error) {
+          return {};
+        }
+      },
     }),
   ],
 });

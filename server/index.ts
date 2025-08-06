@@ -2,6 +2,7 @@ import { awsLambdaRequestHandler } from "@trpc/server/adapters/aws-lambda";
 import { prodAppRouter } from "./trpc/prod/router";
 import { createLambdaContext } from "./trpc/prod/context";
 import dotenv from "dotenv";
+import type { User } from "shared";
 
 export const TEST_USER: User = {
   sub: process.env.DEV_SUB!,

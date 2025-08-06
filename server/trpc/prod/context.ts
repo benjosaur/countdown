@@ -3,12 +3,13 @@ import type { APIGatewayProxyEventV2 } from "aws-lambda";
 import { createServices } from "../../services";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { TEST_USER } from "../..";
+import type { User } from "shared";
 
 // Create JWT verifier for your Cognito User Pool
 const jwtVerifier = CognitoJwtVerifier.create({
-  userPoolId: process.env.COGNITO_USER_POOL_ID! ?? "eu-west-2_vaqScMy2f",
-  tokenUse: "id", // or "id" depending on which token you're using
-  clientId: process.env.COGNITO_CLIENT_ID! ?? "1fi0a5cr78o2jijhmnt4jfkvdt", // Optional, only if you want to verify client ID
+  userPoolId: process.env.COGNITO_USER_POOL_ID! ?? "eu-west-2_ogJVbxAU8",
+  tokenUse: "access", // or "id" depending on which token you're using
+  clientId: process.env.COGNITO_CLIENT_ID! ?? "knjj69oqchh6epn834kn6k7mv", // Optional, only if you want to verify client ID
 });
 
 export const getUser = async (reqOrEvent: any): Promise<User> => {
@@ -42,12 +43,7 @@ export const getUser = async (reqOrEvent: any): Promise<User> => {
     // Verify the JWT token with Cognito
     const payload = await jwtVerifier.verify(token);
 
-    if (
-      !payload.email ||
-      !payload.given_name ||
-      !payload.family_name ||
-      !payload.sub
-    ) {
+    if (!payload.sub) {
       console.log(
         `JWT payload is missing required fields: ${JSON.stringify(payload)}`
       );
@@ -56,9 +52,6 @@ export const getUser = async (reqOrEvent: any): Promise<User> => {
 
     const user: User = {
       sub: payload.sub,
-      email: payload.email.toString(),
-      firstName: payload.given_name.toString(),
-      lastName: payload.family_name.toString(),
     };
     return user;
   } catch (error) {

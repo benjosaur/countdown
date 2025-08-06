@@ -5,7 +5,6 @@ import { Amplify } from "aws-amplify";
 import "@aws-amplify/ui-react/styles.css";
 import { WordTrainer } from "./components/WordTrainer";
 import { HomePage } from "./components/HomePage";
-import { LoginPage } from "./components/LoginPage";
 import { UserLanding } from "./components/UserLanding";
 import amplifyConfig from "./aws-config";
 
@@ -20,7 +19,6 @@ function App() {
         <div className="min-h-screen">
           <Routes>
             <Route path="/" element={<HomePage />} />
-            <Route path="/login" element={<LoginPage />} />
             <Route path="/dashboard" element={<UserLanding />} />
             <Route path="/trainer" element={<WordTrainer />} />
           </Routes>

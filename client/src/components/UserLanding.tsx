@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getCurrentUser, signOut } from "aws-amplify/auth";
+import { useNavigate, useLocation } from "react-router-dom";
+import { fetchUserAttributes, getCurrentUser, signOut } from "aws-amplify/auth";
 import {
   Clock,
   Brain,
@@ -14,10 +14,22 @@ export function UserLanding() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const loadUser = async () => {
       try {
+        // Handle OAuth callback with authorization code
+        const urlParams = new URLSearchParams(location.search);
+        const code = urlParams.get('code');
+        
+        if (code) {
+          // Clear the code from URL to prevent reprocessing
+          window.history.replaceState({}, document.title, location.pathname);
+          // Let Amplify handle the token exchange automatically
+          // by trying to get the current user
+        }
+
         // Check for mock user first (local development)
         const mockUserData = localStorage.getItem("mockUser");
         if (mockUserData) {
@@ -28,14 +40,17 @@ export function UserLanding() {
 
         // Try to get authenticated user
         const currentUser = await getCurrentUser();
-        const userData: User = {
-          id: currentUser.userId,
-          email: currentUser.signInDetails?.loginId || "",
-          name: currentUser.signInDetails?.loginId?.split("@")[0] || "User",
-          given_name:
-            currentUser.signInDetails?.loginId?.split("@")[0] || "User",
-        };
-        setUser(userData);
+        const userAttributes = await fetchUserAttributes();
+        if (!currentUser) {
+          throw new Error("User not authenticated");
+        }
+
+        setUser({
+          sub: currentUser.userId,
+          email: userAttributes.email || "",
+          firstName: userAttributes.given_name || "User",
+          lastName: userAttributes.family_name || "User",
+        });
       } catch (error) {
         // User not authenticated, redirect to login
         navigate("/login");
@@ -45,7 +60,7 @@ export function UserLanding() {
     };
 
     loadUser();
-  }, [navigate]);
+  }, [navigate, location]);
 
   const handleSignOut = async () => {
     try {
@@ -92,7 +107,7 @@ export function UserLanding() {
             <UserIcon className="w-6 h-6 text-blue-600" />
           </div>
           <h2 className="text-4xl font-bold text-blue-900">
-            Welcome back, {user.given_name || user.name}!
+            Welcome back, {user.firstName}!
           </h2>
           <button
             onClick={handleSignOut}

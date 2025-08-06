@@ -25,8 +25,13 @@
     "noPropertyAccessFromIndexSignature": false,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "paths": {
+      "shared": ["./shared/index.ts"],
+      "shared/*": ["./shared/*"]
+    }
   },
+
   "include": ["**/*", "../shared/types", "const/**/*.json"],
   "exclude": ["node_modules", "dist"]
 }

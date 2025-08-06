@@ -1,5 +1,6 @@
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
+import { Database } from "./database";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
@@ -138,7 +139,7 @@ export class InfraStack extends cdk.Stack {
       "CountdownUserPoolClient",
       {
         userPool,
-        userPoolClientName: "paddock-health-user-pool-client",
+        userPoolClientName: "countdown-user-pool-client",
         authFlows: {
           userSrp: true,
           userPassword: true,
@@ -151,8 +152,11 @@ export class InfraStack extends cdk.Stack {
           cognito.UserPoolClientIdentityProvider.GOOGLE,
         ],
         oAuth: {
-          callbackUrls: [`https://${distribution.distributionDomainName}`],
-          logoutUrls: [`https://${distribution.distributionDomainName}`],
+          callbackUrls: [
+            `https://${distribution.distributionDomainName}`,
+            `https://${distribution.distributionDomainName}/dashboard`,
+          ],
+          logoutUrls: [`https://${distribution.distributionDomainName}/`],
           flows: {
             authorizationCodeGrant: true,
           },
@@ -160,12 +164,19 @@ export class InfraStack extends cdk.Stack {
             cognito.OAuthScope.EMAIL,
             cognito.OAuthScope.OPENID,
             cognito.OAuthScope.PROFILE,
+            cognito.OAuthScope.COGNITO_ADMIN,
           ],
         },
       }
     );
 
     userPoolClient.node.addDependency(googleProvider);
+
+    //databases
+    const prodDatabase = new Database(this, "CountdownTable", {
+      tableName: "Countdown",
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
 
     //backend
     const trpcLambda = new lambda.Function(this, "TrpcApiFunction", {
@@ -178,6 +189,9 @@ export class InfraStack extends cdk.Stack {
         FRONTEND_URL: `https://${distribution.distributionDomainName}`,
       },
     });
+
+    prodDatabase.table.grantReadWriteData(trpcLambda);
+
     const api = new apigateway.RestApi(this, "TrpcApi", {
       restApiName: "TRPC API",
       description: "API for TRPC backend",

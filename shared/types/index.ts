@@ -85,9 +85,8 @@ export interface WordPuzzleSubmissionResponse {
 }
 
 export interface User {
-  id: string;
-  email: string;
-  name: string;
-  given_name?: string;
-  family_name?: string;
+  sub: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
 }

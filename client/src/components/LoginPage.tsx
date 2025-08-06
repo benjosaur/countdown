@@ -1,13 +1,17 @@
-import { Authenticator } from "@aws-amplify/ui-react";
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import { getCurrentUser } from "aws-amplify/auth";
+import { getCurrentUser, signInWithRedirect } from "aws-amplify/auth";
 import { Clock } from "lucide-react";
 
 export function LoginPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Redirect to home in production - this page is dev-only
+    if (!import.meta.env.DEV) {
+      navigate("/");
+      return;
+    }
     const checkAuth = async () => {
       try {
         await getCurrentUser();
@@ -65,6 +69,14 @@ export function LoginPage() {
     );
   }
 
+  const handleHostedUISignIn = async () => {
+    try {
+      await signInWithRedirect();
+    } catch (error) {
+      console.error('Sign in failed:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
       <div className="max-w-md w-full mx-auto p-8">
@@ -79,19 +91,12 @@ export function LoginPage() {
           <p className="text-blue-600">Access your word training progress</p>
         </div>
 
-        <Authenticator
-          hideSignUp={false}
-          socialProviders={["google"]}
-          variation="modal"
+        <button
+          onClick={handleHostedUISignIn}
+          className="w-full px-4 py-3 bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors border border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
         >
-          {({ signOut, user }) => {
-            if (user) {
-              handleSignIn();
-              return <div>Redirecting...</div>;
-            }
-            return <div>Please sign in to continue</div>;
-          }}
-        </Authenticator>
+          Sign in with Google
+        </button>
       </div>
     </div>
   );

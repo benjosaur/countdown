@@ -11,6 +11,7 @@ import {
   type DbWordTrainerWord,
 } from "./schema";
 import type {
+  User,
   WordData,
   WordPuzzle,
   WordPuzzleSubmission,
@@ -77,12 +78,11 @@ export class WordSessionService {
     const overallLikelihoodSum = baseline.overallLikelihoodSum;
 
     const sampledLikelihood = Math.floor(Math.random() * overallLikelihoodSum);
-    // const chosenBucketIndex = this.findBucketContainingSampledLikelihood(
-    //   sampledLikelihood,
-    //   userBucketLikelihoods
-    // );
 
-    const chosenBucketIndex = 4;
+    const chosenBucketIndex = this.findBucketContainingSampledLikelihood(
+      sampledLikelihood,
+      userBucketLikelihoods
+    );
 
     const residualSampledLikelihoodWithinBucket =
       sampledLikelihood -
@@ -99,18 +99,14 @@ export class WordSessionService {
         chosenBucketIndex
       );
 
-    // const chosenWordIndex = this.findWordEntryContainingSampledLikelihood(
-    //   residualSampledLikelihoodWithinBucket,
-    //   userWordLikelihoodsInBucketWithMetadata
-    // );
-
-    const chosenWordIndex = 161;
+    const chosenWordIndex = this.findWordEntryContainingSampledLikelihood(
+      residualSampledLikelihoodWithinBucket,
+      userWordLikelihoodsInBucketWithMetadata
+    );
 
     const chosenUserWordEntry = userWordLikelihoodsInBucketWithMetadata.find(
       (entry) => entry.wordIndex === chosenWordIndex
     )!;
-
-    console.log(chosenUserWordEntry);
 
     const puzzle = await this.wordPuzzleService.generatePuzzle(chosenWordIndex);
 

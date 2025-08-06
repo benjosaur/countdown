@@ -28,7 +28,8 @@
     "**/*",
     "../server/trpc/prod/router.ts",
     "types/global.d.ts",
-    "../server/tsconfig.build.json"
+    "../server/tsconfig.build.json",
+    "../shared"
   ],
   "exclude": ["node_modules", "dist"]
 }

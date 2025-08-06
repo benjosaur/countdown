@@ -8,7 +8,12 @@ const amplifyConfig: ResourcesConfig = {
       loginWith: {
         oauth: {
           domain: import.meta.env.VITE_COGNITO_USER_POOL_CLIENT_URL,
-          scopes: ["email", "openid", "profile"],
+          scopes: [
+            "email",
+            "openid",
+            "profile",
+            "aws.cognito.signin.user.admin",
+          ],
           redirectSignIn: [`${window.location.origin}/dashboard`],
           redirectSignOut: [`${window.location.origin}/`],
           responseType: "code",

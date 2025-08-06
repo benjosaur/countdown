@@ -11,6 +11,7 @@ import {
   type DbWordTrainerWord,
 } from "./schema";
 import { generateLikelihood } from "../../utils/words";
+import type { User } from "shared";
 
 export class WordSessionRepository {
   async getUserOverallAndBucketMetaDataRecords(
