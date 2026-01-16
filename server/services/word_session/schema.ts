@@ -1,7 +1,6 @@
 import z from "zod";
 import { dbEntrySchema } from "../schema";
 import type { BaselineWordEntry } from "../../const/baseline_gen";
-import { extend } from "zod/mini";
 
 export const dbWordTrainerWordSchema = dbEntrySchema.extend({
   // pK - USER#{user.sub}
@@ -19,7 +18,7 @@ export const dbWordTrainerWordSchema = dbEntrySchema.extend({
 export const dbMetaWordTrainerBucketSchema = dbEntrySchema.extend(
   // pK - USER#{user.sub}
   // sK - META#WORDTRAINER#BUCKET#{n}
-  dbWordTrainerWordSchema.pick({ deltaLikelihood: true }).shape
+  dbWordTrainerWordSchema.pick({ deltaLikelihood: true }).shape,
 );
 
 export const dbMetaWordTrainerSchema = dbEntrySchema.extend(
@@ -31,7 +30,7 @@ export const dbMetaWordTrainerSchema = dbEntrySchema.extend(
     fail: true,
     averageSuccessTime: true,
     deltaLikelihood: true,
-  }).shape
+  }).shape,
 );
 
 export const dbWordTrainerMetaQuerySchema = z.union([
@@ -54,8 +53,10 @@ export interface DbUpdateWordTrainerFailAttempt {
   category: "fail";
 }
 
-export interface DbUpdateWordTrainerSuccessAttempt
-  extends Omit<DbUpdateWordTrainerFailAttempt, "category"> {
+export interface DbUpdateWordTrainerSuccessAttempt extends Omit<
+  DbUpdateWordTrainerFailAttempt,
+  "category"
+> {
   submittedBaselineWordEntry: BaselineWordEntry;
   chosenAnagram: string;
   timeTaken: number;
