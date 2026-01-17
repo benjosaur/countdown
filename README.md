@@ -1,14 +1,24 @@
 # Countdown Word Trainer
 
-A fast-paced word unscrambling game where players race against a 30-second timer to find hidden words in scrambled letter pools.
+A fast-paced word unscrambling game where players race against a 20-second timer to find hidden words in scrambled letter pools.
 
 **Play now:** https://d2lzkkm86tachs.cloudfront.net
+
+<p align="center">
+  <img src="shared/assets/inplay.png" alt="Countdown Word Trainer - In Game" width="600">
+</p>
 
 ## Overview
 
 Countdown Word Trainer is a practice tool designed to help players master the [Top 1000 useful words for Countdown](https://countdownresources.wordpress.com/2018/10/13/top-1000-words/). This curated list, compiled by Countdown community experts, represents the most strategically valuable words that appear frequently in the game due to their favorable letter combinations and anagram potential. These 1000 words alone enable players to achieve maximum scores in over 20% of all Countdown rounds.
 
 The app challenges players to identify valid words from 9 scrambled letters. Each round presents a new puzzle with a guaranteed solution, testing vocabulary skills and pattern recognition under time pressure.
+
+<p align="center">
+  <img src="shared/assets/stats.png" alt="Session Statistics" width="600">
+  <br>
+  <em>Detailed performance metrics help track your improvement over time</em>
+</p>
 
 ### Adaptive Learning System
 
@@ -23,7 +33,7 @@ This ensures you spend more time practicing your weakest areas, maximizing learn
 
 ## Features
 
-- **30-second countdown timer** for each round
+- **20-second countdown timer** for each round
 - **9-letter scrambled puzzles** with guaranteed valid words
 - **Adaptive learning algorithm** that prioritizes your weakest words
 - **Real-time performance metrics:**
@@ -115,7 +125,7 @@ bun test:watch       # Run tests in watch mode
 2. Server selects a random word from the curated word list
 3. Server pads the word to 9 letters using weighted letter distribution
 4. Server scrambles the 9-letter combination
-5. Client displays scrambled letters with a 30-second countdown
+5. Client displays scrambled letters with a 20-second countdown
 6. Player submits their guess
 7. Server validates and returns feedback
 
