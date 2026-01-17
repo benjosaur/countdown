@@ -5,7 +5,7 @@ A fast-paced word unscrambling game where players race against a 20-second timer
 **Play now:** https://d2lzkkm86tachs.cloudfront.net
 
 <p align="center">
-  <img src="shared/assets/inplay.png" alt="Countdown Word Trainer - In Game" width="600">
+  <img src=".github/images/inplay.png" alt="Countdown Word Trainer - In Game" width="600">
 </p>
 
 ## Overview
@@ -15,7 +15,7 @@ Countdown Word Trainer is a practice tool designed to help players master the [T
 The app challenges players to identify valid words from 9 scrambled letters. Each round presents a new puzzle with a guaranteed solution, testing vocabulary skills and pattern recognition under time pressure.
 
 <p align="center">
-  <img src="shared/assets/stats.png" alt="Session Statistics" width="600">
+  <img src=".github/images/stats.png" alt="Session Statistics" width="600">
   <br>
   <em>Detailed performance metrics help track your improvement over time</em>
 </p>
